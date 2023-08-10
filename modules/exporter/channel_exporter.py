@@ -1,5 +1,6 @@
 import os
 import re
+import urllib.parse
 
 import discord
 import requests
@@ -12,7 +13,6 @@ class ChannelExporter:
     """
     Limitations:
       * Does not drill into threads
-      * Cannot load emoji from servers the bot is not a member of
       * Does not do code formatting
     """
 
@@ -32,11 +32,10 @@ class ChannelExporter:
 
     def copy_asset_locally(self, asset_id: str, url: str, alt_url: str = None) -> str:
         ext: str = ''
-        match: re.Match = re.search('(?P<filename>[^/]+)$', url)
-        if match:
-            filename = match[0]
-            if '.' in filename:
-                ext = '.' + filename.split('.')[-1]
+        parsed_url = urllib.parse.urlparse(url)
+        filename = parsed_url.path.split('/')[-1]
+        if '.' in filename:
+            ext = '.' + filename.split('.')[-1]
 
         local_filename = f"{self.output_dir}/assets/{asset_id}{ext}"
         html_relative_filename = f"./assets/{asset_id}{ext}"
@@ -109,8 +108,14 @@ class ChannelExporter:
         if match:
             emoji_id = match['emoji_id']
             emoji: discord.Emoji | discord.PartialEmoji = self.bot.get_emoji(int(emoji_id))
-            if type(emoji) is discord.Emoji or type(emoji) is discord.PartialEmoji:
-                result = f'<img src="{self.copy_asset_locally(emoji.id, emoji.url)}">'
+            asset_filename: str | None = None
+            if type(emoji) == discord.Emoji or type(emoji) == discord.PartialEmoji:
+                asset_filename = self.copy_asset_locally(emoji.id, emoji.url)
+            elif emoji is None:
+                asset_filename = self.copy_asset_locally(emoji_id, f'https://cdn.discordapp.com/emojis/{emoji_id}.webp?size=96&quality=lossless')
+
+            if asset_filename:
+                result = f'<img src="{asset_filename}">'
             else:
                 result = markdown
         return result
@@ -392,4 +397,4 @@ class ChannelExporter:
         await self.get_all_messages()
         await self.convert_messages_to_html()
         self.zip_contents()
-        await self.send_zips_to_channel()
+        # await self.send_zips_to_channel()
