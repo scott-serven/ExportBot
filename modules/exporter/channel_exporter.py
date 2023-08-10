@@ -385,7 +385,7 @@ class ChannelExporter:
             if file.split('.')[-1] == 'zip':
                 print('send file')
                 discord_file = discord.File(self.output_dir + '/' + file, filename=file)
-                await self.channel.send('file=discord_file)
+                await self.channel.send(file=discord_file)
 
     async def export(self) -> None:
         self.create_output_dirs()
