@@ -1,0 +1,208 @@
+<html>
+<head>
+    <title>Discord Channel Export</title>
+    <style>
+        :root {
+            --base-text-color: #d9d9d9;
+        }
+
+        body {
+            background-color: #313338;
+            color: var(--base-text-color);
+            font-family: 'Arial', sans-serif;
+            font-size: 1rem;
+        }
+        .mt-20 {
+            margin-top: 20px;
+        }
+        .botTag {
+            background-color: #5865f2;
+            color: var(--base-text-color);
+            font-size: 0.7em;
+            padding: 3px;
+            border-radius: 3px;
+        }
+        .messageBlock {
+            display: flex;
+            flex-direction: row;
+            padding: 6px 0;
+        }
+        .messageBlock:hover {
+            background-color: #2e3035;
+        }
+        .avatar {
+            flex: 0 0 auto;
+            min-width: 40px;
+            max-width: 40px;
+            justify-content: start;
+            align-items: start;
+            padding: 4px 15px;
+        }
+        .avatar img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .content {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .title {
+        }
+        .username {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .timestamp {
+            color: #c7c7c7;
+            font-size: 0.8em;
+        }
+        .text {
+            font-size: 0.9em;
+        }
+        .attachment {
+            max-width: 300px;
+            display: block;
+            border-radius: 8px;
+            margin: 6px 0;
+        }
+        .reactions {
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+        }
+        .reaction {
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+            height: 20px;
+            font-size: 1em;
+            border: 1px solid #5865f2;
+            border-radius: 5px;
+            padding: 2px 4px;
+            background-color: #373a54;
+        }
+        .emoji img {
+            max-height: 30px;
+        }
+        .reaction .emoji {
+            display: flex;
+            align-items: center;
+            font-size: 1em;
+        }
+        .reaction .count {
+            display: flex;
+            align-items: center;
+            font-size: 0.75em;
+        }
+        .reaction img {
+            max-height: 16px;
+        }
+        .dateSeparator {
+            width: 100%;
+            text-align: center;
+            font-size: 0.8em;
+            border-bottom: 1px solid #777;
+            margin: 10px 0;
+        }
+        .code {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #000;
+            background-color: #2b2d31;
+            margin: 10px 0;
+            font-family: 'Consolas', 'Andale Mono', 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        .codeText {
+            background-color: #2b2d31;
+            font-family: monospace;
+            padding: 2px;
+        }
+        .atText {
+            background-color: #3a406e;
+            padding: 4px;
+            border-radius: 3px;
+        }
+        .atRole {
+            background-color: #423e42;
+            color: #cd9e9a;
+            padding: 4px;
+            border-radius: 3px;
+        }
+
+        .embeds {
+
+        }
+        .embed {
+            display: flex;
+            flex-direction: row;
+            border-radius: 5px;
+            margin: 4px 0;
+            font-size: 0.9em;
+        }
+        .embedColorBar {
+            width: 4px;
+            border-radius: 4px 0 0 4px;
+            background-color: #1e1f22;
+        }
+        .embedContent {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1 0 auto;
+            background-color: #2b2d31;
+            padding: 10px;
+            max-width: 600px;
+            border-radius: 0 8px 8px 0;
+        }
+        .embedAuthor {
+            display: flex;
+            flex-direction: row;
+            gap: 6px;
+        }
+        .embedAuthor img {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .embedAuthor a {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--base-text-color)
+        }
+        .embedAuthor a:hover {
+            text-decoration: underline;
+        }
+        .embedThumbnail img {
+            max-width: 600px;
+            border-radius: 8px;
+        }
+        .embedImage img {
+            max-width: 300px;
+            max-height: 400px;
+        }
+        .field {
+            display: block;
+        }
+        .fieldInline {
+            display: inline;
+        }
+        a, a:visited {
+            color: #01a8fc;
+        }
+        pre {
+            margin: 0;
+        }
+        video {
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+  {body}
+</body>
+</html>

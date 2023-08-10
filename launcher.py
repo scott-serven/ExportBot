@@ -35,9 +35,9 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 async def main() -> None:
     async with core.Bot() as bot:
-        tbot: core.TBot = core.TBot()
+        # tbot: core.TBot = core.TBot()
 
-        asyncio.create_task(tbot.start())
+        # asyncio.create_task(tbot.start())
         await bot.start(core.config["TOKENS"]["bot"])
 
 

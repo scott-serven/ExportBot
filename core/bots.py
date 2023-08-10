@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import logging
+import pathlib
 
 import discord
 from discord.ext import commands
@@ -46,7 +47,15 @@ class Bot(commands.Bot):
 
     async def on_ready(self) -> None:
         logger.info(f"Logged into Discord as: {self.user} | {self.user.id}")
+        print("on_ready")
 
+    async def setup_hook(self) -> None:
+        print("setup_hook")
+        modules: list[str] = [f'{p.parent}.{p.stem}' for p in pathlib.Path('modules').glob('*.py')]
+        modules: list[str] = [s.replace('/', '.').replace('\\', '.') for s in modules]
+        print("modules", modules)
+        for module in modules:
+            await self.load_extension(module)
 
 class TBot(tcommands.Bot):
     def __init__(self) -> None:
