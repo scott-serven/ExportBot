@@ -398,7 +398,7 @@ class ChannelExporter:
             f"""
             <div class="messageBlock flex-row">
                 <div class="gutter">
-                    {self.get_author_avatar(None)}
+                    <div class="threadIndicator"></div>
                 </div>
                 <div class="content">
                     <div class="threadLinkBlock">
@@ -461,6 +461,8 @@ class ChannelExporter:
         :param curr_message:
         :return:
         """
+        if curr_message.id in self.thread_id_map:
+            return False
         if curr_message.interaction:
             return False
         if not last_message:
