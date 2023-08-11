@@ -18,10 +18,11 @@ class ChannelExporter:
       * Does not do code formatting
     """
 
-    def __init__(self, bot: discord.Client, channel: discord.TextChannel, output_dir: str):
+    def __init__(self, bot: discord.Client, channel: discord.TextChannel, output_dir: str, output_channel_id: int):
         self.bot: discord.Client = bot
         self.channel: discord.TextChannel = channel
         self.output_dir: str = output_dir
+        self.output_channel_id: int = output_channel_id
         self.messages: list[discord.Message] = []
         self.document_filename = 'index.html'
         self.thread_id_map: {int, discord.Thread} = {}
@@ -59,11 +60,15 @@ class ChannelExporter:
             }
             for url in [url, alt_url]:
                 if url is not None:
-                    response = requests.get(url, headers=headers)
-                    if response.status_code == 200:
-                        with open(local_filename, "wb") as f:
-                            f.write(response.content)
-                            break
+                    try:
+                        response = requests.get(url, headers=headers)
+                        if response.status_code == 200:
+                            with open(local_filename, "wb") as f:
+                                f.write(response.content)
+                                break
+                    except Exception as e:
+                        logger.error(f"error downloading file: {url}: {e}")
+
         return html_relative_filename
 
     def escape_html(self, markdown: str) ->str:
@@ -440,34 +445,48 @@ class ChannelExporter:
             f.write(doc)
 
     def zip_contents(self) -> None:
+        max_upload_size = self.channel.guild.filesize_limit
         split_count: int = 0
         zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count}.zip", 'w', compresslevel=ZIP_BZIP2)
         for file in os.listdir(f'{self.output_dir}'):
             if file.split('.')[-1] == 'html':
                 zipfile.write(f'{self.output_dir}/{file}', f'{file}')
-                if os.path.getsize(f"{self.output_dir}/{self.channel.id}_{split_count}.zip") > 20000000:
+                if os.path.getsize(f"{self.output_dir}/{self.channel.id}_{split_count}.zip") > max_upload_size:
                     split_count += 1
                     zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count}.zip", 'w', compresslevel=ZIP_BZIP2)
 
         zipfile.write(f"{self.output_dir}/assets/", "assets/")
         for file in os.listdir(f'{self.output_dir}/assets/'):
-            zipfile.write(f'{self.output_dir}/assets/{file}', f'assets/{file}')
-            if os.path.getsize(f"{self.output_dir}/{self.channel.id}_{split_count}.zip") > 20000000:
+            zip_size: int = os.path.getsize(f"{self.output_dir}/{self.channel.id}_{split_count}.zip")
+            file_size: int = os.path.getsize(f'{self.output_dir}/assets/{file}')
+            if zip_size + file_size > max_upload_size:  # assume it won't compress
                 split_count += 1
-                zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count}.zip", 'w', compresslevel=ZIP_BZIP2)
+                zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count:02}.zip", 'w', compresslevel=ZIP_BZIP2)
+            zipfile.write(f'{self.output_dir}/assets/{file}', f'assets/{file}')
 
-    async def send_zips_to_channel(self) -> None:
-        await self.channel.send("Backup of Channel Completed.  Zip(s) will be posted below.")
-        for file in os.listdir(f'{self.output_dir}'):
-            if file.split('.')[-1] == 'zip':
-                discord_file = discord.File(self.output_dir + '/' + file, filename=file)
-                await self.channel.send(file=discord_file)
+    async def send_zips_to_output_channel(self) -> None:
+        if self.output_channel_id == -1:
+            return
+
+        channel: discord.TextChannel = self.bot.get_channel(self.output_channel_id)
+        if channel:
+            await channel.send("Backup of Channel Completed.  Zip(s) will be posted below.")
+            try:
+                sorted_files = [f for f in os.listdir(f'{self.output_dir}') if f.split('.')[-1] == 'zip']
+                sorted_files.sort()
+                for idx, file in enumerate(sorted_files):
+                    logger.info(f"uploading file {self.output_dir + '/' + file} to channel {channel.name}")
+                    discord_file = discord.File(self.output_dir + '/' + file, filename=f'{self.channel.name} {idx+1} of {len(sorted_files)}.zip')
+                    await channel.send(file=discord_file)
+            except Exception as ex:
+                logging.error(f"error uploading to discord: {ex}")
+                await channel.send('An error was encountered uploading files to discord')
 
     async def export_threads(self) -> None:
         for thread_id in self.thread_id_map.keys():
             thread = self.thread_id_map[thread_id]
             thread_channel = thread
-            converter = ChannelExporter(self.bot, thread_channel, self.output_dir)
+            converter = ChannelExporter(self.bot, thread_channel, self.output_dir, -1)
             converter.document_filename = self.get_thread_document_filename(thread.id)
             await converter.get_all_messages()
             html_document = await converter.convert_messages_to_html()
@@ -497,5 +516,5 @@ class ChannelExporter:
         self.write_document_file(html_document)
         await self.export_threads()
         self.zip_contents()
-        # await self.send_zips_to_channel()
+        await self.send_zips_to_output_channel()
         logger.info('Export completed')
