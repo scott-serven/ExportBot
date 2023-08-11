@@ -36,7 +36,7 @@ class ChannelExport(commands.Cog):
     @commands.has_role(core.config["EXPORT"]["role"])
     async def export(self, ctx: commands.Context, export_channel_id: int, output_channel_id: int = -1):
         self.export_queue.append(ExportCommand(export_channel_id, output_channel_id))
-        await ctx.send(f"Channel backup is queued.  A message / zip file will be posted to the output channel (if specified) when complete")
+        # await ctx.send(f"Channel backup is queued.  A message / zip file will be posted to the output channel (if specified) when complete")
 
     @tasks.loop(seconds=1)
     async def check_export_queue(self):

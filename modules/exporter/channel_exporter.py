@@ -97,7 +97,7 @@ class ChannelExporter:
         match: re.Match = re.search('<@(?P<userid>\d+)>', markdown)
         user: discord.User = self.bot.get_user(int(match.groups()[0]))
         if user:
-            return user.name
+            return user.display_name
         else:
             return 'unknown user'
 
@@ -198,7 +198,7 @@ class ChannelExporter:
         avatar_url = author.avatar.url if author and author.avatar else 'https://cdn.discordapp.com/embed/avatars/0.png'
         return f'<img src="{avatar_url}">'
 
-    def default_title_to_html(self, message: discord.Message) -> str:
+    def author_name_to_html(self, message):
         bot_html: str = ''
         if message.author.bot:
             bot_html = ' <span class="botTag">Bot</span>'
@@ -207,8 +207,14 @@ class ChannelExporter:
             username_style = f'style="color: {message.author.top_role.color};"'
         return \
             f"""
+             <span class="username" {username_style}>{message.author.display_name}</span>{bot_html}
+             """
+
+    def default_title_to_html(self, message: discord.Message) -> str:
+        return \
+            f"""
              <div class="title">
-                 <span class="username" {username_style}>{message.author.display_name}</span>{bot_html} 
+                 {self.author_name_to_html(message)} 
                  <span class="timestamp">{message.created_at.strftime("%Y-%m-%d %H:%M")}</span>
              </div>
              """
@@ -325,7 +331,7 @@ class ChannelExporter:
             result += await self.convert_embed_to_html(embed)
         return result
 
-    async def convert_default_message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
+    async def default_message_to_inner_html(self, message: discord.Message, coalesce: bool = False) -> str:
         avatar: str = ''
         title: str = ''
         if not coalesce:
@@ -345,32 +351,39 @@ class ChannelExporter:
         if message.embeds and len(message.embeds) > 0:
             embeds = await self.convert_embeds_to_html(message)
 
+        return \
+            f"""
+            <div class="gutter">
+                {avatar}
+            </div>
+            <div class="content">
+                {title}
+                <div>{html_content}</div>
+                {attachment_content}
+                {embeds}
+                {reactions_content}
+            </div>
+            """
+
+    async def default_message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
         html: str = \
             f"""
-            <div class="messageBlock {'' if coalesce else 'mt-20'}">
-                <div class="avatar">
-                    {avatar}
-                </div>
-                <div class="content">
-                    {title}
-                    <div>{html_content}</div>
-                    {attachment_content}
-                    {embeds}
-                    {reactions_content}
-                </div>
+            <a id="{message.id}"></a>
+            <div class="messageBlock flex-row {'' if coalesce else 'mt-20'}">
+                {await self.default_message_to_inner_html(message, coalesce)}
             </div>
             """
         if message.id in self.thread_id_map:
-            html += await self.convert_thread_created_to_html(message)
+            html += await self.thread_created_message_to_html(message)
         return html
 
-    def convert_system_message_to_html(self, message: discord.Message) -> str:
+    def system_message_to_html(self, message: discord.Message) -> str:
         avatar: str = self.get_author_avatar(None)
         title: str = self.system_title_to_html(message)
         return \
             f"""
-            <div class="messageBlock mt-20">
-                <div class="avatar">
+            <div class="messageBlock flex-row mt-20">
+                <div class="gutter">
                     {avatar}
                 </div>
                 <div class="content">
@@ -379,12 +392,12 @@ class ChannelExporter:
            </div>
            """
 
-    async def convert_thread_created_to_html(self, message: discord.Message) -> str:
+    async def thread_created_message_to_html(self, message: discord.Message) -> str:
         thread = self.thread_id_map[message.id]
         return \
             f"""
-            <div class="messageBlock">
-                <div class="avatar">
+            <div class="messageBlock flex-row">
+                <div class="gutter">
                     {self.get_author_avatar(None)}
                 </div>
                 <div class="content">
@@ -400,7 +413,30 @@ class ChannelExporter:
             </div>   
             """
 
-    async def convert_message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
+    async def reply_message_to_html(self, message: discord.Message) -> str:
+        ref_message = await self.channel.fetch_message(message.reference.message_id)
+        return \
+            f"""
+             <div class="messageBlock flex-col mt-20">
+                <div class="flex flex-row mb4">
+                    <div class="gutter">
+                        <div class="replyIndicator"></div>
+                    </div>
+                    <div class="replyTo">
+                        <span class="replyAvatar">{self.get_author_avatar(ref_message.author)}</span>
+                        <span class="replyAuthor">{self.author_name_to_html(ref_message)}</span>  
+                        <span class="replyMessage">
+                            <a href="#{ref_message.id}">{ref_message.content}</a>
+                        </span>
+                    </div>
+                </div>
+                <div class="flex flex-row">
+                    {await self.default_message_to_inner_html(message, False)}
+                </div>
+             </div>
+             """
+
+    async def message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
         """
         Delegate to the appropriate HTML generator function based on the MessageType of the message
         :param message:
@@ -409,11 +445,13 @@ class ChannelExporter:
         """
         match message.type:
             case discord.MessageType.new_member:
-                return self.convert_system_message_to_html(message)
+                return self.system_message_to_html(message)
             case discord.MessageType.thread_created:
-                return await self.convert_thread_created_to_html(message)
+                return await self.thread_created_message_to_html(message)
+            case discord.MessageType.reply:
+                return await self.reply_message_to_html(message)
             case _:
-                return await self.convert_default_message_to_html(message, coalesce)
+                return await self.default_message_to_html(message, coalesce)
 
     def should_coalesce_messages(self, last_message: discord.Message | None, curr_message: discord.Message) -> bool:
         """
@@ -441,7 +479,7 @@ class ChannelExporter:
         last_message: discord.Message | None = None
         for message in self.messages:
             coalesce: bool = self.should_coalesce_messages(last_message, message)
-            message_html += await self.convert_message_to_html(message, coalesce)
+            message_html += await self.message_to_html(message, coalesce)
             last_message = message
         return \
             f"""
