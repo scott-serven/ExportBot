@@ -200,12 +200,12 @@ class ChannelExporter:
         if message.author.bot:
             bot_html = ' <span class="botTag">Bot</span>'
         username_style: str = ''
-        if message.author is discord.Member and message.author.top_role and message.author.top_role.color.value != 0:
+        if isinstance(message.author, discord.member.Member) and message.author.top_role and message.author.top_role.color.value != 0:
             username_style = f'style="color: {message.author.top_role.color};"'
         return \
             f"""
              <div class="title">
-                 <span class="username" {username_style}>{message.author.name}</span>{bot_html} 
+                 <span class="username" {username_style}>{message.author.display_name}</span>{bot_html} 
                  <span class="timestamp">{message.created_at.strftime("%Y-%m-%d %H:%M")}</span>
              </div>
              """

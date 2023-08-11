@@ -149,10 +149,10 @@ class MarkdownTokenizer:
                 case '#': token = Token(MarkdownTokenType.HEADER1, value)
                 case '##': token = Token(MarkdownTokenType.HEADER2, value)
                 case '###': token = Token(MarkdownTokenType.HEADER3, value)
-            if token is not None:
+            if token:
                 self.capture_curr_token()
                 self.tokens.append(token)
-                self.idx += len(header_match['header']) + 1 + len(value)
+                self.idx += len(header_match['header']) + 1 + len(value) + 1  # an extra +1 to exclude any newline
                 self.token_found = True
 
     def append_to_curr_token(self):
