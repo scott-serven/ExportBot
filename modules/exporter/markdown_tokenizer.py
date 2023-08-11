@@ -15,7 +15,7 @@ class MarkdownTokenType(Enum):
     CODE_BLOCK = 'code_block'
     CODE_TEXT = 'code_text'
     LINK = 'link'
-    TEXT_LINK = 'text_link'
+    MASKED_LINK = 'masked_link'
 
 
 class Token:
@@ -45,7 +45,7 @@ class MarkdownTokenizer:
     HEADER_PATTERN: re.Pattern = re.compile('^(?P<header>#{1,3}) (?P<value>.+)$', re.MULTILINE)
     LINK_PATTERN: re.Pattern = re.compile('^(?P<link>https?://[^\s]+)(\s|$)', re.IGNORECASE)
     ODD_LINK_PATTERN: re.Pattern = re.compile('^<(?P<link>https?://[^>]+)>', re.IGNORECASE)  # discord does something weird with certain links where it puts gt/lt around them
-    TEXT_LINK_PATTERN: re.Pattern = re.compile(r'\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)')
+    MASKED_LINK_PATTERN: re.Pattern = re.compile(r'\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)')
 
     def __init__(self, markdown):
         self.markdown: str = markdown
@@ -125,11 +125,11 @@ class MarkdownTokenizer:
             self.idx += len(match['link']) + 2
             self.token_found = True
 
-    def get_text_link_token(self) -> None:
-        match: re.Match = self.TEXT_LINK_PATTERN.search(self.markdown[self.idx::])
+    def get_masked_link_token(self) -> None:
+        match: re.Match = self.MASKED_LINK_PATTERN.search(self.markdown[self.idx::])
         if match:
             self.capture_curr_token()
-            self.tokens.append(Token(MarkdownTokenType.TEXT_LINK, match[0]))
+            self.tokens.append(Token(MarkdownTokenType.MASKED_LINK, match[0]))
             self.idx += len(match[0])
             self.token_found = True
 
@@ -187,7 +187,7 @@ class MarkdownTokenizer:
                     self.get_emoji_token()
                     self.get_odd_link_token()
                 case '[':
-                    self.get_text_link_token()
+                    self.get_masked_link_token()
                 case 'h' | 'H':
                     self.get_link_token()
 
