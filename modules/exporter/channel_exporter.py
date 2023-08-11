@@ -17,8 +17,9 @@ class ChannelExporter:
     Limitations:
       * Does not do code formatting
       * Does not handle list markdown
-      * Does not handle replies
       * Does not handle most of the special discord.MessageTypes
+      * Does not handle blockquote markdown
+      * Does not put a pretty box around file download links
     """
 
     def __init__(self, bot: discord.Client, channel: discord.TextChannel, output_dir: str, output_channel_id: int):
@@ -89,9 +90,14 @@ class ChannelExporter:
         return markdown
 
     async def get_all_messages(self) -> None:
+        count: int = 0
         async for message in self.channel.history(limit=None):
             self.messages.append(message)
+            count += 1
+            if count % 100 == 0:
+                logger.info(f'loaded {count} messages')
         self.messages.reverse()
+        logger.info(f'All {count} messages loaded')
 
     def at_user_markdown_to_username(self, markdown: str) -> str:
         match: re.Match = re.search('<@(?P<userid>\d+)>', markdown)
@@ -182,7 +188,7 @@ class ChannelExporter:
                 case MarkdownTokenType.EMOJI:
                     html += f'<span class="emoji">{await self.emoji_markdown_to_html(token.value)}</span>'
                 case MarkdownTokenType.CODE_TEXT:
-                    html += f'<span class="codeText">{token.value}</span>'
+                    html += f'<span class="codeText">{self.escape_html(token.value)}</span>'
                 case MarkdownTokenType.CODE_BLOCK:
                     html += f'<div class="code"><code><pre>{self.escape_html(token.value)}</pre></code></div>'
                 case MarkdownTokenType.TEXT:
@@ -393,6 +399,8 @@ class ChannelExporter:
            """
 
     async def thread_created_message_to_html(self, message: discord.Message) -> str:
+        if message.id not in self.thread_id_map:
+            return ''
         thread = self.thread_id_map[message.id]
         return \
             f"""
@@ -555,11 +563,13 @@ class ChannelExporter:
         We need to get a superset of both archived and current threads to cover everything
         :return: nothing
         """
+        logger.info('building thread cache')
         async for thread in self.channel.archived_threads(limit=None):
             self.thread_id_map[thread.id] = thread
 
         for thread in self.channel.threads:
             self.thread_id_map[thread.id] = thread
+        logger.info(f'{len(self.thread_id_map.keys())} threads cached')
 
     async def export(self) -> None:
         logger.info(f'Starting export of "{self.channel.name}" channel on "{self.channel.guild.name}"')
