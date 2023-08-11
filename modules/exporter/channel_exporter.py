@@ -67,9 +67,9 @@ class ChannelExporter:
         return html_relative_filename
 
     def escape_html(self, markdown: str) ->str:
+        markdown = markdown.replace('&', '&amp;')
         markdown = markdown.replace('<', '&lt;')
         markdown = markdown.replace('>', '&gt;')
-        markdown = markdown.replace('&', '&amp;')
         markdown = markdown.replace('\n', '<br>')
         return markdown
 
@@ -176,7 +176,7 @@ class ChannelExporter:
                 case MarkdownTokenType.CODE_TEXT:
                     html += f'<span class="codeText">{token.value}</span>'
                 case MarkdownTokenType.CODE_BLOCK:
-                    html += f'<div class="code"><code><pre>{self.newline_to_break(token.value)}</pre></code></div>'
+                    html += f'<div class="code"><code><pre>{self.escape_html(token.value)}</pre></code></div>'
                 case MarkdownTokenType.TEXT:
                     html += self.newline_to_break(self.markdown_to_html(token.value))
                 case MarkdownTokenType.LINK:
@@ -417,14 +417,24 @@ class ChannelExporter:
             return False
         return True
 
-    async def convert_messages_to_html(self) -> None:
-        html: str = ''
+    async def convert_messages_to_html(self) -> str:
+        message_html: str = ''
         last_message: discord.Message | None = None
         for message in self.messages:
             coalesce: bool = self.should_coalesce_messages(last_message, message)
-            html += await self.convert_message_to_html(message, coalesce)
+            message_html += await self.convert_message_to_html(message, coalesce)
             last_message = message
+        return \
+            f"""
+             <div class="pageHeader">
+                 <h2>{self.channel.guild.name} - {self.channel.name}</h2>
+             </div>
+             <div class="messageContainer">
+                 {message_html}
+             </div>
+             """
 
+    def write_document_file(self, html):
         doc: str = self.doc_template.replace("{body}", html)
         with open(f"{self.output_dir}/{self.document_filename}", "w") as f:
             f.write(doc)
@@ -460,7 +470,8 @@ class ChannelExporter:
             converter = ChannelExporter(self.bot, thread_channel, self.output_dir)
             converter.document_filename = self.get_thread_document_filename(thread.id)
             await converter.get_all_messages()
-            await converter.convert_messages_to_html()
+            html_document = await converter.convert_messages_to_html()
+            converter.write_document_file(html_document)
 
     async def cache_thread_message_ids(self) -> None:
         """
@@ -482,7 +493,8 @@ class ChannelExporter:
         self.create_output_dirs()
         await self.cache_thread_message_ids()
         await self.get_all_messages()
-        await self.convert_messages_to_html()
+        html_document = await self.convert_messages_to_html()
+        self.write_document_file(html_document)
         await self.export_threads()
         self.zip_contents()
         # await self.send_zips_to_channel()

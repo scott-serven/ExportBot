@@ -5,12 +5,29 @@
         :root {
             --base-text-color: #d9d9d9;
         }
-
         body {
             background-color: #313338;
             color: var(--base-text-color);
             font-family: 'Arial', sans-serif;
             font-size: 1rem;
+        }
+        .pageHeader {
+            position: fixed;
+            top: 0;
+            background-color: #2e3035;
+            width: 100%;
+            border-bottom: 1px solid #999;
+            padding: 8px 70px;
+            margin: 0;
+            height: fit-content;
+            z-index: 100;
+        }
+        .pageHeader h2 {
+            margin: 4px;
+        }
+        .messageContainer {
+            position: relative;
+            padding: 70px 0;
         }
         .mt-20 {
             margin-top: 20px;
@@ -115,6 +132,7 @@
             margin: 10px 0;
             font-family: 'Consolas', 'Andale Mono', 'Courier New', Courier, monospace;
             font-size: 0.9em;
+            width: fit-content;
         }
         .codeText {
             background-color: #2b2d31;
