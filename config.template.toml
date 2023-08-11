@@ -16,3 +16,6 @@ prefix = ""
 [TBOT]
 prefix = ""
 channels = [""]
+
+[EXPORT]
+role = ""
