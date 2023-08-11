@@ -1,6 +1,7 @@
 import os
 import re
 import urllib.parse
+import logging
 
 import discord
 import requests
@@ -8,11 +9,12 @@ from zipfile import ZipFile, ZIP_BZIP2
 
 from .markdown_tokenizer import MarkdownTokenizer, MarkdownTokenType
 
+logger: logging.Logger = logging.getLogger(__name__)
+
 
 class ChannelExporter:
     """
     Limitations:
-      * Does not drill into threads
       * Does not do code formatting
     """
 
@@ -51,7 +53,6 @@ class ChannelExporter:
         local_filename = f"{self.output_dir}/assets/{asset_id}{ext}"
         html_relative_filename = f"./assets/{asset_id}{ext}"
         if not os.path.isfile(local_filename):
-            print("downloading asset: ", url)
             headers = {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'Accept-Encoding': 'gzip, deflate, br'
@@ -80,7 +81,6 @@ class ChannelExporter:
         return markdown
 
     async def get_all_messages(self) -> None:
-        print('get_all_messages: ', type(self.channel), self.channel)
         async for message in self.channel.history(limit=None):
             self.messages.append(message)
         self.messages.reverse()
@@ -195,7 +195,7 @@ class ChannelExporter:
         if message.author.bot:
             bot_html = ' <span class="botTag">Bot</span>'
         username_style: str = ''
-        if message.author.top_role and message.author.top_role.color.value != 0:
+        if message.author is discord.Member and message.author.top_role and message.author.top_role.color.value != 0:
             username_style = f'style="color: {message.author.top_role.color};"'
         return \
             f"""
@@ -362,7 +362,6 @@ class ChannelExporter:
 
     async def convert_thread_created_to_html(self, message: discord.Message) -> str:
         thread = self.thread_id_map[message.id]
-        print('Convert Message:', message, thread)
         return \
             f"""
             <div class="messageBlock">
@@ -450,17 +449,13 @@ class ChannelExporter:
     async def send_zips_to_channel(self) -> None:
         await self.channel.send("Backup of Channel Completed.  Zip(s) will be posted below.")
         for file in os.listdir(f'{self.output_dir}'):
-            print('file', file, file.split('.')[-1])
             if file.split('.')[-1] == 'zip':
-                print('send file')
                 discord_file = discord.File(self.output_dir + '/' + file, filename=file)
                 await self.channel.send(file=discord_file)
 
     async def export_threads(self) -> None:
         for thread_id in self.thread_id_map.keys():
-            print('thread id', thread_id)
             thread = self.thread_id_map[thread_id]
-            # print("Export Thread: ", thread.name, thread.id)
             thread_channel = thread
             converter = ChannelExporter(self.bot, thread_channel, self.output_dir)
             converter.document_filename = self.get_thread_document_filename(thread.id)
@@ -472,17 +467,18 @@ class ChannelExporter:
         There is nothing on a message itself that indicates it started a thread, so we need to check if the
         message id matches a thread id.  We'll cache this upfront to avoid costly API calls to look this up
         per message being exported.
-        :return:
+
+        We need to get a superset of both archived and current threads to cover everything
+        :return: nothing
         """
         async for thread in self.channel.archived_threads(limit=None):
-            print('thread_archive: ', type(thread), thread)
             self.thread_id_map[thread.id] = thread
 
         for thread in self.channel.threads:
             self.thread_id_map[thread.id] = thread
 
-
     async def export(self) -> None:
+        logger.info(f'Starting export of "{self.channel.name}" channel on "{self.channel.guild.name}"')
         self.create_output_dirs()
         await self.cache_thread_message_ids()
         await self.get_all_messages()
@@ -490,3 +486,4 @@ class ChannelExporter:
         await self.export_threads()
         self.zip_contents()
         # await self.send_zips_to_channel()
+        logger.info('Export completed')
