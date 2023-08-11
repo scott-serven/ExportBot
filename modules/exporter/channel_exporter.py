@@ -16,6 +16,9 @@ class ChannelExporter:
     """
     Limitations:
       * Does not do code formatting
+      * Does not handle list markdown
+      * Does not handle replies
+      * Does not handle most of the special discord.MessageTypes
     """
 
     def __init__(self, bot: discord.Client, channel: discord.TextChannel, output_dir: str, output_channel_id: int):
@@ -219,19 +222,30 @@ class ChannelExporter:
              </div>
              """
 
+    def image_attachment_to_html(self, local_filename: str) -> str:
+        return f'<a href="{local_filename}"><img class="attachment" src="{local_filename}"></a>'
+
+    def video_attachment_to_html(self, local_filename: str) -> str:
+        return f'<video width="400" controls><source src="{local_filename}"></video>'
+
+    def download_attachment_to_html(self, local_filename: str) -> str:
+        return f'<a href="{local_filename}">Download</a>'
+
     def convert_attachment_to_html(self, attachment: discord.Attachment) -> str:
-        result = '<div class="attachment">'
-        relative_filename = self.copy_asset_locally(str(attachment.id), attachment.proxy_url, attachment.url)
+        local_filename = self.copy_asset_locally(str(attachment.id), attachment.proxy_url, attachment.url)
         match attachment.filename.split('.')[-1]:
             case "png" | "jpg" | "jpeg" | "gif":
-                result += f'<a href="{relative_filename}"><img class="attachment" src="{relative_filename}"></a>'
+                attachment_html = self.image_attachment_to_html(local_filename)
             case "mp4":
-                result += f'<video width="400" controls><source src="{relative_filename}"></video>'
+                attachment_html = self.video_attachment_to_html(local_filename)
             case _:
-                # file download
-                result += f'<a href="{relative_filename}">Download</a>'
-        result += '</div>'
-        return result
+                attachment_html = self.download_attachment_to_html(local_filename)
+        return \
+            f"""
+             <div class="attachment">
+                {attachment_html}
+             </div>
+             """
 
     def convert_attachments_to_html(self, message: discord.Message) -> str:
         result: str = ''
