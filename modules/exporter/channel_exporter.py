@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import urllib.parse
+import humanfriendly
 from zipfile import ZIP_BZIP2, ZipFile
 
 import discord
@@ -21,7 +22,7 @@ class ChannelExporter:
       * Does not do code formatting
       * Does not handle list markdown
       * Does not handle most of the special discord.MessageTypes
-      * Does not put a pretty box around file download links
+      * Doesn't have date separator line
     """
 
     def __init__(self, bot: discord.Client, channel: discord.TextChannel, output_dir: str, output_channel_id: int):
@@ -163,17 +164,17 @@ class ChannelExporter:
         """
         match: re.Match = re.search(r"\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)", text_link)
         if match:
-            return await self.convert_message_content_to_html(match["text"]), match["link"]
+            return await self.message_content_to_html(match["text"]), match["link"]
         else:
             return "", ""
 
-    async def convert_message_content_to_html(self, content: str) -> str:
+    async def message_content_to_html(self, message_content: str) -> str:
         """
         Tokenizes and parses message content into HTML.
         :param message:
         :return:
         """
-        markdown_tokenizer = MarkdownTokenizer(content)
+        markdown_tokenizer = MarkdownTokenizer(message_content)
         markdown_tokenizer.tokenize()
 
         html: str = ""
@@ -226,6 +227,20 @@ class ChannelExporter:
         return f"""
              <span class="username" {username_style}>{author.display_name}</span>{bot_html}
              """
+
+    def time_to_html(self, id:int, timestamp: datetime.datetime) -> str:
+        year: int = timestamp.year
+        month: int = timestamp.month
+        day: int = timestamp.day
+        hour: int = timestamp.hour
+        minute: int = timestamp.minute
+        seconds: int = timestamp.second
+        return f"""
+             <span class="timestamp" id="ts_{id}">
+                 {timestamp.strftime("%Y-%m-%d %H:%M")}
+             </span>
+             <script>utcToLocalTime('ts_{id}', {year}, {month-1}, {day}, {hour}, {minute}, {seconds});</script>
+            """
 
     def timestamp_to_html(self, id: int, timestamp: datetime.datetime) -> str:
         year: int = timestamp.year
@@ -287,13 +302,13 @@ class ChannelExporter:
                     <img src="./assets/download.png"/>
                 </div>
                 <div class="flex flex-col justify-center">
-                    <a class="subtle" href="{local_filename}">{original_filename}</a>
-                    <div></div>
+                    <a class="subtleLink" href="{local_filename}">{original_filename}</a>
+                    <div class="smallText subtleText">{humanfriendly.format_size(size)}</div>
                 </div>
             </div>
             """
 
-    def convert_attachment_to_html(self, attachment: discord.Attachment) -> str:
+    def attachment_to_html(self, attachment: discord.Attachment) -> str:
         local_filename = self.copy_asset_locally(str(attachment.id), attachment.proxy_url, attachment.url)
         match attachment.filename.split(".")[-1]:
             case "png" | "jpg" | "jpeg" | "gif":
@@ -308,10 +323,10 @@ class ChannelExporter:
              </div>
              """
 
-    def convert_attachments_to_html(self, message: discord.Message) -> str:
+    def attachments_to_html(self, message: discord.Message) -> str:
         result: str = ""
         for attachment in message.attachments:
-            result += self.convert_attachment_to_html(attachment)
+            result += self.attachment_to_html(attachment)
         return result
 
     def reaction_to_html(self, reaction: discord.Reaction) -> str:
@@ -331,7 +346,7 @@ class ChannelExporter:
                 </div>
                 """
 
-    def convert_reactions_to_html(self, message: discord.Message) -> str:
+    def reactions_to_html(self, message: discord.Message) -> str:
         reactions: str = ""
         for reaction in message.reactions:
             reactions += self.reaction_to_html(reaction)
@@ -344,7 +359,7 @@ class ChannelExporter:
     def get_id_from_url(self, url) -> str:
         return url.split("/")[-2]
 
-    async def convert_embed_to_html(self, embed: discord.Embed) -> str:
+    async def embed_to_html(self, embed: discord.Embed) -> str:
         result = '<div class="embed">'
         embed_color_style: str = ""
         if embed.colour:
@@ -359,15 +374,15 @@ class ChannelExporter:
                 f"</div>"
             )
         if embed.title:
-            result += f'  <div class="embedTitle">{await self.convert_message_content_to_html(embed.title)}</div>'
+            result += f'  <div class="embedTitle">{await self.message_content_to_html(embed.title)}</div>'
         if embed.description:
             result += (
-                f'  <div class="embedDescription">{await self.convert_message_content_to_html(embed.description)}</div>'
+                f'  <div class="embedDescription">{await self.message_content_to_html(embed.description)}</div>'
             )
         if embed.fields:
             for field in embed.fields:
-                name_html: str = await self.convert_message_content_to_html(field.name)
-                value_html: str = await self.convert_message_content_to_html(field.value)
+                name_html: str = await self.message_content_to_html(field.name)
+                value_html: str = await self.message_content_to_html(field.value)
                 if field.inline:
                     result += f'<div class="fieldInline">'
                 else:
@@ -387,31 +402,37 @@ class ChannelExporter:
         result += "</div>"
         return result
 
-    async def convert_embeds_to_html(self, message: discord.Message) -> str:
+    async def embeds_to_html(self, message: discord.Message) -> str:
         result: str = ""
         for embed in message.embeds:
-            result += await self.convert_embed_to_html(embed)
+            result += await self.embed_to_html(embed)
         return result
 
     async def default_message_to_inner_html(self, message: discord.Message, coalesce: bool = False) -> str:
         avatar: str = ""
         title: str = ""
-        if not coalesce:
-            avatar: str = self.get_author_avatar(message.author)
-            title: str = self.default_title_to_html(message)
-        html_content: str = await self.convert_message_content_to_html(message.content)
+        if coalesce:
+            avatar = f"""
+                <div class="coalescedTime smallText subtleText hiddenTime">
+                    {self.time_to_html(message.id, message.created_at)}
+                </div>"""
+        else:
+            avatar = self.get_author_avatar(message.author)
+            title = self.default_title_to_html(message)
+
+        html_content: str = await self.message_content_to_html(message.content)
 
         reactions_content: str = ""
         if message.reactions and len(message.reactions) > 0:
-            reactions_content = self.convert_reactions_to_html(message)
+            reactions_content = self.reactions_to_html(message)
 
         attachment_content: str = ""
         if message.attachments and len(message.attachments) > 0:
-            attachment_content = self.convert_attachments_to_html(message)
+            attachment_content = self.attachments_to_html(message)
 
         embeds: str = ""
         if message.embeds and len(message.embeds) > 0:
-            embeds = await self.convert_embeds_to_html(message)
+            embeds = await self.embeds_to_html(message)
 
         return f"""
             <div class="gutter">
@@ -546,7 +567,7 @@ class ChannelExporter:
             return False
         return True
 
-    async def convert_messages_to_html(self) -> str:
+    async def messages_to_html(self) -> str:
         message_html: str = ""
         last_message: discord.Message | None = None
         for message in self.messages:
@@ -627,7 +648,7 @@ class ChannelExporter:
             converter = ChannelExporter(self.bot, thread_channel, self.output_dir, -1)
             converter.document_filename = self.get_thread_document_filename(thread.id)
             await converter.get_all_messages()
-            html_document = await converter.convert_messages_to_html()
+            html_document = await converter.messages_to_html()
             converter.write_document_file(html_document)
 
     async def cache_thread_message_ids(self) -> None:
@@ -652,7 +673,7 @@ class ChannelExporter:
         self.create_output_dirs()
         await self.cache_thread_message_ids()
         await self.get_all_messages()
-        html_document = await self.convert_messages_to_html()
+        html_document = await self.messages_to_html()
         self.write_document_file(html_document)
         await self.export_threads()
         self.copy_fonts()

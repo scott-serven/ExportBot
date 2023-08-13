@@ -12,6 +12,16 @@
             element = document.querySelector('#' + element_id);
             element.innerHTML = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
         }
+        const utcToLocalTime = (element_id, year, month, day, hour, minute, second) => {
+            let date = new Date();
+            date.setUTCFullYear(year);
+            date.setUTCMonth(month);
+            date.setUTCDate(day);
+            date.setUTCHours(hour, minute);
+            date.setUTCSeconds(0);
+            element = document.querySelector('#' + element_id);
+            element.innerHTML = date.toLocaleTimeString(undefined, { timeStyle: 'short' });
+        }
     </script>
     <style>
         @font-face {
@@ -103,6 +113,12 @@
         .rounded {
             border-radius: 5px;
         }
+        .smallText {
+            font-size: 0.8em;
+        }
+        .subtleText {
+            color: var(--secondary-text-color);
+        }
         .messageContainer {
             background-color: #313338;
             position: relative;
@@ -125,8 +141,14 @@
             display: flex;
             padding: 3px 0;
         }
-        .messageBlock:hover {
+        .messageBlock:hover,
+        .messageBlock:hover .hiddenTime {
             background-color: #2e3035;
+            visibility: visible;
+        }
+        .hiddenTime {
+            visibility: hidden;
+            margin-top: 4px;
         }
         h1, h2, h3 {
             color: var(--header-color);
@@ -152,7 +174,7 @@
             min-width: var(--gutter-width);
             max-width: var(--gutter-width);
             justify-content: center;
-            align-items: start;
+            /*align-items: start;*/
             overflow: clip;
             margin: 0 3px 0 0;
         }
@@ -160,6 +182,7 @@
             width: var(--avatar-width);
             height: var(--avatar-width);
             border-radius: 50%;
+            margin-top: 4px;
         }
         .content {
             flex: 1 1 auto;
