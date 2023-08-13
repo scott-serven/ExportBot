@@ -2,13 +2,31 @@
 <head>
     <title>Discord Channel Export</title>
     <style>
+        @font-face {
+            font-family: 'gg sans';
+            src:
+                url('./assets/gg sans Regular.woff') format("woff");
+        }
+        @font-face {
+            font-family: 'gg sans';
+            font-weight: 600 900;
+            src:
+                url('./assets/gg sans Bold.woff') format("woff");
+        }
+        @font-face {
+            font-family: 'gg sans';
+            font-weight: 500;
+            src:
+                url('./assets/gg sans Semibold.woff') format("woff");
+        }
         :root {
-            --base-text-color: #d9d9d9;
+            --base-text-color: rgb(219, 222, 225);
             --gutter-width: 70px;
             --avatar-width: 40px;
             --secondary-text-color: #c7c7c7;
             --primary-text-color: #d9d9d9;
             --secondary-link-color: #c7c7c7;
+            --header-color: rgb(242, 243, 245);
         }
         .flex {
             display: flex;
@@ -25,7 +43,7 @@
         body {
             background-color: #2b2d31;
             color: var(--base-text-color);
-            font-family: 'Arial', sans-serif;
+            font-family: 'gg sans', 'Arial', sans-serif;
             font-size: 1rem;
             margin: 0;
         }
@@ -63,17 +81,23 @@
         .messageBlock:hover {
             background-color: #2e3035;
         }
+        h1, h2, h3 {
+            color: var(--header-color);
+        }
         .messageBlock h1 {
-            font-size: 1.75em;
+            font-size: 1.5em;
             margin: 0.25em 0;
         }
         .messageBlock h2 {
-            font-size: 1.5em;
+            font-size: 1.25em;
             margin: 0.20em 0;
         }
         .messageBlock h3 {
-            font-size: 1.25em;
+            font-size: 1.0em;
             margin: 0.15em 0;
+        }
+        .messageBlock .content {
+            line-height: 1.375rem;
         }
         .gutter {
             display: flex;
@@ -99,8 +123,9 @@
         .title {
         }
         .username {
-            font-weight: bold;
-            font-size: 0.9em;
+            color: var(--header-color);
+            font-weight: 500;
+            font-size: 1rem;
         }
         .timestamp {
             color: var(--secondary-text-color);
@@ -237,7 +262,7 @@
             max-height: 400px;
         }
         blockquote {
-            border-left: 4px solid #555555;
+            border-left: 4px solid rgb(78, 80, 88);
             margin: 0;
             padding-left: 10px;
         }

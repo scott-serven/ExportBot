@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import shutil
 import urllib.parse
 from zipfile import ZIP_BZIP2, ZipFile
 
@@ -518,6 +519,10 @@ class ChannelExporter:
         with open(f"{self.output_dir}/{self.document_filename}", "w") as f:
             f.write(doc)
 
+    def copy_fonts(self) -> None:
+        for file in os.listdir('./modules/exporter/fonts'):
+            shutil.copy(f"./modules/exporter/fonts/{file}", f"{self.output_dir}/assets/{file}")
+
     def zip_contents(self) -> None:
         max_upload_size = self.channel.guild.filesize_limit
         split_count: int = 0
@@ -598,6 +603,7 @@ class ChannelExporter:
         html_document = await self.convert_messages_to_html()
         self.write_document_file(html_document)
         await self.export_threads()
+        self.copy_fonts()
         self.zip_contents()
         await self.send_zips_to_output_channel()
         logger.info("Export completed")
