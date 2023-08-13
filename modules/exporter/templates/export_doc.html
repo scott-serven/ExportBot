@@ -46,6 +46,7 @@
             --primary-text-color: #d9d9d9;
             --secondary-link-color: #c7c7c7;
             --header-color: rgb(242, 243, 245);
+            --dark-box-color: #2b2d31;
         }
         .flex {
             display: flex;
@@ -81,10 +82,13 @@
         .messageContainer {
             background-color: #313338;
             position: relative;
-            padding: 0 0 30px 0;
+            padding: 15px 0 30px 0;
         }
         .mt-20 {
             margin-top: 20px;
+        }
+        .ml-4 {
+            margin-left: 4px;
         }
         .botTag {
             background-color: #5865f2;
@@ -202,14 +206,14 @@
             padding: 10px;
             border-radius: 8px;
             border: 1px solid #000;
-            background-color: #2b2d31;
+            background-color: var(--dark-box-color);
             margin: 10px 0;
             font-family: 'Consolas', 'Andale Mono', 'Courier New', Courier, monospace;
             font-size: 0.9em;
             width: fit-content;
         }
         .codeText {
-            background-color: #2b2d31;
+            background-color: var(--dark-box-color);
             font-family: monospace;
             font-size: 0.9em;
             padding: 3px;
@@ -301,8 +305,19 @@
         video {
             border-radius: 8px;
         }
+        .subtleLink {
+            text-decoration: none;
+        }
+        .subtleLink:hover {
+            text-decoration: underline;
+        }
+        .threadLink a {
+            color: var(--header-color);
+            font-weight: 600;
+            font-size: 1rem;
+        }
         .threadLinkBlock {
-            background-color: #2b2d31;
+            background-color: var(--dark-box-color);
             padding: 8px;
             border-radius: 5px;
             width: fit-content;

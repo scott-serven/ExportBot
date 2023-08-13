@@ -144,13 +144,11 @@ class MarkdownTokenizer:
             self.idx += len(match[0])
             if self.idx < len(self.markdown) and self.markdown[self.idx] == '\n':
                 self.idx += 1
-            print('Match: ', match[0], len(match[0]))
             self.token_found = True
 
     def get_multiline_blockquote_token(self) -> None:
         match: re.Match = self.MULTILINE_BLOCKQUOTE_PATTERN.search(self.markdown[self.idx::])
         if match:
-            print('DEBUG: multiline-blockquote', match[0])
             self.capture_curr_token()
             self.tokens.append(Token(MarkdownTokenType.BLOCKQUOTE, match[0]))
             self.idx += len(match[0])

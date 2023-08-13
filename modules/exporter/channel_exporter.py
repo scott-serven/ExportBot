@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import re
@@ -212,35 +213,57 @@ class ChannelExporter:
         avatar_url = author.avatar.url if author and author.avatar else "https://cdn.discordapp.com/embed/avatars/0.png"
         return f'<img src="{avatar_url}">'
 
-    def author_name_to_html(self, message):
+    def author_name_to_html(self, author: discord.Member):
         bot_html: str = ""
-        if message.author.bot:
+        if author.bot:
             bot_html = ' <span class="botTag">Bot</span>'
         username_style: str = ""
         if (
-            isinstance(message.author, discord.member.Member)
-            and message.author.top_role
-            and message.author.top_role.color.value != 0
+            isinstance(author, discord.member.Member)
+            and author.top_role
+            and author.top_role.color.value != 0
         ):
-            username_style = f'style="color: {message.author.top_role.color};"'
+            username_style = f'style="color: {author.top_role.color};"'
         return f"""
-             <span class="username" {username_style}>{message.author.display_name}</span>{bot_html}
+             <span class="username" {username_style}>{author.display_name}</span>{bot_html}
              """
 
+    def timestamp_to_html(self, id: int, timestamp: datetime.datetime) -> str:
+        year: int = timestamp.year
+        month: int = timestamp.month
+        day: int = timestamp.day
+        hour: int = timestamp.hour
+        minute: int = timestamp.minute
+        seconds: int = timestamp.second
+        return f"""
+             <span class="timestamp" id="ts_{id}">
+                 {timestamp.strftime("%Y-%m-%d %H:%M")}
+             </span>
+             <script>utcToLocal('ts_{id}', {year}, {month-1}, {day}, {hour}, {minute}, {seconds});</script>
+            """
+
     def default_title_to_html(self, message: discord.Message) -> str:
-        year: int = message.created_at.year
-        month: int = message.created_at.month
-        day: int = message.created_at.day
-        hour: int = message.created_at.hour
-        minute: int = message.created_at.minute
-        seconds: int = message.created_at.second
         return f"""
              <div class="title">
-                 {self.author_name_to_html(message)} 
-                 <span class="timestamp" id="ts_{message.id}">
-                     {message.created_at.strftime("%Y-%m-%d %H:%M")}
-                 </span>
-                 <script>utcToLocal('ts_{message.id}', {year}, {month-1}, {day}, {hour}, {minute}, {seconds});</script>
+                 {self.author_name_to_html(message.author)}
+                 {self.timestamp_to_html(message.id, message.created_at)} 
+             </div>
+             """
+
+    def thread_link_to_html(self, thread: discord.Thread) -> str:
+        return f"""
+            <span class="threadLink">
+                <a class="subtleLink" href="">{thread.name}</a>
+            </span>
+            """
+
+    def thread_created_title_to_html(self, message: discord.Message, thread: discord.Thread) -> str:
+        return f"""
+             <div class="title">
+                 {self.author_name_to_html(message.author)}
+                 started a thread: 
+                 {self.thread_link_to_html(thread)} 
+                 {self.timestamp_to_html(message.id, message.created_at)}
              </div>
              """
 
@@ -395,10 +418,6 @@ class ChannelExporter:
             """
 
     async def default_message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
-        if message.id == 1140127696576323585:
-            print("Message:")
-            print(message.content)
-            print('----------')
         html: str = f"""
             <a id="{message.id}"></a>
             <div class="messageBlock flex-row {'' if coalesce else 'mt-20'}">
@@ -427,18 +446,29 @@ class ChannelExporter:
         if message.id not in self.thread_id_map:
             return ""
         thread = self.thread_id_map[message.id]
+        title:str = self.thread_created_title_to_html(message, thread)
         return f"""
-            <div class="messageBlock flex-row">
-                <div class="gutter">
-                    <div class="threadIndicator"></div>
+            <div class="messageBlock flex-col mt-20">
+                <div class="flex flex-row">
+                    <div class="gutter">
+                        <span><i>#</i></span>
+                    </div>
+                    <div class="content">
+                        {title}
+                    </div>
                 </div>
-                <div class="content">
-                    <div class="threadLinkBlock">
-                        <div class="threadLinkTitle">
-                            <span>{thread.name}</span> 
-                            <span><a href="{self.get_thread_document_filename(message.id)}">{thread.message_count} Messages &gt;</a>
-                        </div>
-                        <div class="threadLinkMessagePreview">
+                <div class="flex flex-row">
+                    <div class="gutter">
+                        <div class="threadIndicator"></div>
+                    </div>
+                    <div class="content">
+                        <div class="threadLinkBlock">
+                            <div class="threadLinkTitle">
+                                <span>{thread.name}</span> 
+                                <span class="ml-4"><a class="subtleLink" href="{self.get_thread_document_filename(message.id)}">{thread.message_count} Messages &gt;</a>
+                            </div>
+                            <div class="threadLinkMessagePreview">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -455,7 +485,7 @@ class ChannelExporter:
                     </div>
                     <div class="replyTo">
                         <span class="replyAvatar">{self.get_author_avatar(ref_message.author)}</span>
-                        <span class="replyAuthor">{self.author_name_to_html(ref_message)}</span>  
+                        <span class="replyAuthor">{self.author_name_to_html(ref_message.author)}</span>  
                         <span class="replyMessage">
                             <a href="#{ref_message.id}">{ref_message.content}</a>
                         </span>
@@ -511,6 +541,7 @@ class ChannelExporter:
         message_html: str = ""
         last_message: discord.Message | None = None
         for message in self.messages:
+            print(message.id, message.type)
             coalesce: bool = self.should_coalesce_messages(last_message, message)
             message_html += await self.message_to_html(message, coalesce)
             last_message = message
