@@ -228,10 +228,19 @@ class ChannelExporter:
              """
 
     def default_title_to_html(self, message: discord.Message) -> str:
+        year: int = message.created_at.year
+        month: int = message.created_at.month
+        day: int = message.created_at.day
+        hour: int = message.created_at.hour
+        minute: int = message.created_at.minute
+        seconds: int = message.created_at.second
         return f"""
              <div class="title">
                  {self.author_name_to_html(message)} 
-                 <span class="timestamp">{message.created_at.strftime("%Y-%m-%d %H:%M")}</span>
+                 <span class="timestamp" id="ts_{message.id}">
+                     {message.created_at.strftime("%Y-%m-%d %H:%M")}
+                 </span>
+                 <script>utcToLocal('ts_{message.id}', {year}, {month-1}, {day}, {hour}, {minute}, {seconds});</script>
              </div>
              """
 

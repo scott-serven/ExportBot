@@ -1,23 +1,42 @@
 <html>
 <head>
     <title>Discord Channel Export</title>
+    <script>
+        const utcToLocal = (element_id, year, month, day, hour, minute, second) => {
+            let date = new Date();
+            date.setUTCFullYear(year);
+            date.setUTCMonth(month);
+            date.setUTCDate(day);
+            date.setUTCHours(hour, minute);
+            date.setUTCSeconds(0);
+            element = document.querySelector('#' + element_id);
+            element.innerHTML = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+        }
+    </script>
     <style>
         @font-face {
             font-family: 'gg sans';
+            font-weight: 100 300;
+            src:
+                url('./assets/gg sans Medium.woff') format("woff");
+        }
+        @font-face {
+            font-family: 'gg sans';
+            font-weight: 400;
             src:
                 url('./assets/gg sans Regular.woff') format("woff");
         }
         @font-face {
             font-family: 'gg sans';
-            font-weight: 600 900;
+            font-weight: 500 600;
             src:
-                url('./assets/gg sans Bold.woff') format("woff");
+                    url('./assets/gg sans Semibold.woff') format("woff");
         }
         @font-face {
             font-family: 'gg sans';
-            font-weight: 500;
+            font-weight: 700 900;
             src:
-                url('./assets/gg sans Semibold.woff') format("woff");
+                url('./assets/gg sans Bold.woff') format("woff");
         }
         :root {
             --base-text-color: rgb(219, 222, 225);
@@ -124,7 +143,7 @@
         }
         .username {
             color: var(--header-color);
-            font-weight: 500;
+            font-weight: 600;
             font-size: 1rem;
         }
         .timestamp {
@@ -290,8 +309,9 @@
             font-size: 0.9em;
         }
         .threadLinkTitle {
-            font-weight: bold;
-
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--header-color);
         }
         .threadLinkMessagePreview {
             overflow-x: clip;
