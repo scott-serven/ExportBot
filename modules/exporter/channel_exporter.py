@@ -21,7 +21,6 @@ class ChannelExporter:
       * Does not do code formatting
       * Does not handle list markdown
       * Does not handle most of the special discord.MessageTypes
-      * Does not handle blockquote markdown
       * Does not put a pretty box around file download links
     """
 
@@ -197,7 +196,7 @@ class ChannelExporter:
                 case MarkdownTokenType.CODE_TEXT:
                     html += f'<span class="codeText">{self.escape_html(token.value)}</span>'
                 case MarkdownTokenType.CODE_BLOCK:
-                    html += f'<div class="code"><code><pre>{self.escape_html(token.value)}</pre></code></div>'
+                    html += f'<div class="code darkBorder"><code><pre>{self.escape_html(token.value)}</pre></code></div>'
                 case MarkdownTokenType.TEXT:
                     html += self.newline_to_break(self.markdown_to_html(token.value))
                 case MarkdownTokenType.LINK:
@@ -281,8 +280,18 @@ class ChannelExporter:
     def video_attachment_to_html(self, local_filename: str) -> str:
         return f'<video width="400" controls><source src="{local_filename}"></video>'
 
-    def download_attachment_to_html(self, local_filename: str) -> str:
-        return f'<a href="{local_filename}">Download</a>'
+    def download_attachment_to_html(self, original_filename: str, local_filename: str, size: str) -> str:
+        return f"""
+            <div class="flex flex-row darkBox darkBorder rounded p15 gap8">
+                <div>
+                    <img src="./assets/download.png"/>
+                </div>
+                <div class="flex flex-col justify-center">
+                    <a class="subtle" href="{local_filename}">{original_filename}</a>
+                    <div></div>
+                </div>
+            </div>
+            """
 
     def convert_attachment_to_html(self, attachment: discord.Attachment) -> str:
         local_filename = self.copy_asset_locally(str(attachment.id), attachment.proxy_url, attachment.url)
@@ -292,7 +301,7 @@ class ChannelExporter:
             case "mp4":
                 attachment_html = self.video_attachment_to_html(local_filename)
             case _:
-                attachment_html = self.download_attachment_to_html(local_filename)
+                attachment_html = self.download_attachment_to_html(attachment.filename, local_filename, attachment.size)
         return f"""
              <div class="attachment">
                 {attachment_html}
@@ -420,7 +429,7 @@ class ChannelExporter:
     async def default_message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
         html: str = f"""
             <a id="{message.id}"></a>
-            <div class="messageBlock flex-row {'' if coalesce else 'mt-20'}">
+            <div class="messageBlock flex-row {'' if coalesce else 'mt20'}">
                 {await self.default_message_to_inner_html(message, coalesce)}
             </div>
             """
@@ -432,7 +441,7 @@ class ChannelExporter:
         avatar: str = self.get_author_avatar(None)
         title: str = self.system_title_to_html(message)
         return f"""
-            <div class="messageBlock flex-row mt-20">
+            <div class="messageBlock flex-row mt20">
                 <div class="gutter">
                     {avatar}
                 </div>
@@ -448,7 +457,7 @@ class ChannelExporter:
         thread = self.thread_id_map[message.id]
         title:str = self.thread_created_title_to_html(message, thread)
         return f"""
-            <div class="messageBlock flex-col mt-20">
+            <div class="messageBlock flex-col mt20">
                 <div class="flex flex-row">
                     <div class="gutter">
                         <span><i>#</i></span>
@@ -465,7 +474,7 @@ class ChannelExporter:
                         <div class="threadLinkBlock">
                             <div class="threadLinkTitle">
                                 <span>{thread.name}</span> 
-                                <span class="ml-4"><a class="subtleLink" href="{self.get_thread_document_filename(message.id)}">{thread.message_count} Messages &gt;</a>
+                                <span class="ml4"><a class="subtleLink" href="{self.get_thread_document_filename(message.id)}">{thread.message_count} Messages &gt;</a>
                             </div>
                             <div class="threadLinkMessagePreview">
                             </div>
@@ -478,7 +487,7 @@ class ChannelExporter:
     async def reply_message_to_html(self, message: discord.Message) -> str:
         ref_message = await self.channel.fetch_message(message.reference.message_id)
         return f"""
-             <div class="messageBlock flex-col mt-20">
+             <div class="messageBlock flex-col mt20">
                 <div class="flex flex-row mb4">
                     <div class="gutter">
                         <div class="replyIndicator"></div>
@@ -541,7 +550,6 @@ class ChannelExporter:
         message_html: str = ""
         last_message: discord.Message | None = None
         for message in self.messages:
-            print(message.id, message.type)
             coalesce: bool = self.should_coalesce_messages(last_message, message)
             message_html += await self.message_to_html(message, coalesce)
             last_message = message
@@ -562,6 +570,10 @@ class ChannelExporter:
     def copy_fonts(self) -> None:
         for file in os.listdir('./modules/exporter/fonts'):
             shutil.copy(f"./modules/exporter/fonts/{file}", f"{self.output_dir}/assets/{file}")
+
+    def copy_images(self) -> None:
+        for file in os.listdir('./modules/exporter/images'):
+            shutil.copy(f"./modules/exporter/images/{file}", f"{self.output_dir}/assets/{file}")
 
     def zip_contents(self) -> None:
         max_upload_size = self.channel.guild.filesize_limit
@@ -644,6 +656,7 @@ class ChannelExporter:
         self.write_document_file(html_document)
         await self.export_threads()
         self.copy_fonts()
+        self.copy_images()
         self.zip_contents()
         await self.send_zips_to_output_channel()
         logger.info("Export completed")
