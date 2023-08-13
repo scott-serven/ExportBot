@@ -1,7 +1,9 @@
 import discord
-from discord.ext import tasks, commands
+from discord.ext import commands, tasks
+
 import core
 from modules.exporter.channel_exporter import ChannelExporter
+
 
 try:
     from .core import *
@@ -10,14 +12,12 @@ except ImportError:
 
 
 class ExportCommand:
-
     def __init__(self, export_channel_id: int, output_channel_id: int):
         self.export_channel_id = export_channel_id
         self.output_channel_id = output_channel_id
 
 
 class ChannelExport(commands.Cog):
-
     def __init__(self, bot: Bot) -> None:
         self.bot: Bot = bot
         self.current_export_command: ExportCommand | None = None
@@ -26,17 +26,22 @@ class ChannelExport(commands.Cog):
 
     async def backup_channel(self, export_command: ExportCommand) -> None:
         channel: discord.TextChannel = self.bot.get_channel(export_command.export_channel_id)
-        channel_exporter = ChannelExporter(self.bot,
-                                           channel,
-                                           f'output/{export_command.export_channel_id}',
-                                           export_command.output_channel_id)
+        channel_exporter = ChannelExporter(
+            self.bot, channel, f"output/{export_command.export_channel_id}", export_command.output_channel_id
+        )
         await channel_exporter.export()
 
     @commands.command()
     @commands.has_role(core.config["EXPORT"]["role"])
     async def export(self, ctx: commands.Context, export_channel_id: int, output_channel_id: int = -1):
         self.export_queue.append(ExportCommand(export_channel_id, output_channel_id))
-        # await ctx.send(f"Channel backup is queued.  A message / zip file will be posted to the output channel (if specified) when complete")
+
+    @commands.command()
+    @commands.has_role(core.config["EXPORT"]["role"])
+    async def debug(self, ctx: commands.Context, export_channel_id: int, export_message_id: int):
+        channel: discord.TextChannel = self.bot.get_channel(export_channel_id)
+        channel_exporter = ChannelExporter(self.bot, channel, f"output/debug", ctx.channel.id)
+        await channel_exporter.debug(export_message_id)
 
     @tasks.loop(seconds=1)
     async def check_export_queue(self):

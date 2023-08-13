@@ -51,11 +51,12 @@ class Bot(commands.Bot):
 
     async def setup_hook(self) -> None:
         print("setup_hook")
-        modules: list[str] = [f'{p.parent}.{p.stem}' for p in pathlib.Path('modules').glob('*.py')]
-        modules: list[str] = [s.replace('/', '.').replace('\\', '.') for s in modules]
+        modules: list[str] = [f"{p.parent}.{p.stem}" for p in pathlib.Path("modules").glob("*.py")]
+        modules: list[str] = [s.replace("/", ".").replace("\\", ".") for s in modules]
         print("modules", modules)
         for module in modules:
             await self.load_extension(module)
+
 
 class TBot(tcommands.Bot):
     def __init__(self) -> None:

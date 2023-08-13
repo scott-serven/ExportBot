@@ -1,13 +1,14 @@
+import logging
 import os
 import re
 import urllib.parse
-import logging
+from zipfile import ZIP_BZIP2, ZipFile
 
 import discord
 import requests
-from zipfile import ZipFile, ZIP_BZIP2
 
 from .markdown_tokenizer import MarkdownTokenizer, MarkdownTokenType
+
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -28,10 +29,10 @@ class ChannelExporter:
         self.output_dir: str = output_dir
         self.output_channel_id: int = output_channel_id
         self.messages: list[discord.Message] = []
-        self.document_filename = 'index.html'
+        self.document_filename = "index.html"
         self.thread_id_map: {int, discord.Thread} = {}
-        with open("modules/templates/export_doc.html", "r") as f:  # TODO use current path as reference
-            self.doc_template = ''.join(f.readlines())
+        with open("modules/exporter/templates/export_doc.html", "r") as f:  # TODO use current path as reference
+            self.doc_template = "".join(f.readlines())
 
     def get_thread_document_filename(self, thread_id) -> str:
         """
@@ -40,7 +41,7 @@ class ChannelExporter:
         :param thread_id:
         :return: a filename that represents the html file for thread contents
         """
-        return f'thread_{thread_id}_index.html'
+        return f"thread_{thread_id}_index.html"
 
     def create_output_dirs(self) -> None:
         if not os.path.isdir(self.output_dir):
@@ -49,18 +50,18 @@ class ChannelExporter:
             os.mkdir(f"{self.output_dir}/assets/")
 
     def copy_asset_locally(self, asset_id: str, url: str, alt_url: str = None) -> str:
-        ext: str = ''
+        ext: str = ""
         parsed_url = urllib.parse.urlparse(url)
-        filename = parsed_url.path.split('/')[-1]
-        if '.' in filename:
-            ext = '.' + filename.split('.')[-1]
+        filename = parsed_url.path.split("/")[-1]
+        if "." in filename:
+            ext = "." + filename.split(".")[-1]
 
         local_filename = f"{self.output_dir}/assets/{asset_id}{ext}"
         html_relative_filename = f"./assets/{asset_id}{ext}"
         if not os.path.isfile(local_filename):
             headers = {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Encoding': 'gzip, deflate, br'
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Accept-Encoding": "gzip, deflate, br",
             }
             for url in [url, alt_url]:
                 if url is not None:
@@ -75,18 +76,20 @@ class ChannelExporter:
 
         return html_relative_filename
 
-    def escape_html(self, markdown: str) ->str:
-        markdown = markdown.replace('&', '&amp;')
-        markdown = markdown.replace('<', '&lt;')
-        markdown = markdown.replace('>', '&gt;')
-        markdown = markdown.replace('\n', '<br>')
+    def escape_html(self, markdown: str) -> str:
+        markdown = markdown.replace("&", "&amp;")
+        markdown = markdown.replace("<", "&lt;")
+        markdown = markdown.replace(">", "&gt;")
+        markdown = markdown.replace("\n", "<br>")
         return markdown
 
     def markdown_to_html(self, markdown: str) -> str:
-        markdown = re.sub('\*\*(?P<text>[^\*]*)\*\*', '<b>\g<1></b>', markdown, flags=re.MULTILINE)
-        markdown = re.sub('\*(?P<text>[^\*]*)\*', '<i>\g<1></i>', markdown, flags=re.MULTILINE)
-        markdown = re.sub('__(?P<text>[^_]*)__', '<span style="font-decoration:underline">\g<1></span>', markdown, flags=re.MULTILINE)
-        markdown = re.sub(r'\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)', '<a href="\g<2>">\g<1></a>', markdown)
+        markdown = re.sub("\*\*(?P<text>[^\*]*)\*\*", "<b>\g<1></b>", markdown, flags=re.MULTILINE)
+        markdown = re.sub("\*(?P<text>[^\*]*)\*", "<i>\g<1></i>", markdown, flags=re.MULTILINE)
+        markdown = re.sub(
+            "__(?P<text>[^_]*)__", '<span style="font-decoration:underline">\g<1></span>', markdown, flags=re.MULTILINE
+        )
+        markdown = re.sub(r"\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)", '<a href="\g<2>">\g<1></a>', markdown)
         return markdown
 
     async def get_all_messages(self) -> None:
@@ -95,33 +98,33 @@ class ChannelExporter:
             self.messages.append(message)
             count += 1
             if count % 100 == 0:
-                logger.info(f'loaded {count} messages')
+                logger.info(f"loaded {count} messages")
         self.messages.reverse()
-        logger.info(f'All {count} messages loaded')
+        logger.info(f"All {count} messages loaded")
 
     def at_user_markdown_to_username(self, markdown: str) -> str:
-        match: re.Match = re.search('<@(?P<userid>\d+)>', markdown)
+        match: re.Match = re.search("<@(?P<userid>\d+)>", markdown)
         user: discord.User = self.bot.get_user(int(match.groups()[0]))
         if user:
             return user.display_name
         else:
-            return 'unknown user'
+            return "unknown user"
 
     def at_role_markdown_to_name(self, markdown: str) -> str:
-        match: re.Match = re.search('<@&(?P<role_id>\d+)>', markdown)
+        match: re.Match = re.search("<@&(?P<role_id>\d+)>", markdown)
         role: any = self.channel.guild.get_role(int(match.groups()[0]))
         if role:
             return role.name
         else:
-            return 'unknown role'
+            return "unknown role"
 
     def channel_link_to_name(self, markdown: str) -> str:
-        match: re.Match = re.search('<#(?P<channel>\d+)>', markdown)
+        match: re.Match = re.search("<#(?P<channel>\d+)>", markdown)
         channel: any = self.bot.get_channel(int(match.groups()[0]))
         if channel:
             return channel.name
         else:
-            return 'unknown channel'
+            return "unknown channel"
 
     async def emoji_markdown_to_html(self, markdown) -> str:
         """
@@ -129,16 +132,18 @@ class ChannelExporter:
         :param markdown:
         :return:
         """
-        match: re.Match = re.search('<a?:[^:]+:(?P<emoji_id>\d+)>', markdown)
-        result = ''
+        match: re.Match = re.search("<a?:[^:]+:(?P<emoji_id>\d+)>", markdown)
+        result = ""
         if match:
-            emoji_id = match['emoji_id']
+            emoji_id = match["emoji_id"]
             emoji: str | None | discord.Emoji | discord.PartialEmoji = self.bot.get_emoji(int(emoji_id))
             asset_filename: str | None = None
             if type(emoji) == discord.Emoji or type(emoji) == discord.PartialEmoji:
                 asset_filename = self.copy_asset_locally(str(emoji.id), emoji.url)
             elif emoji is None:
-                asset_filename = self.copy_asset_locally(emoji_id, f'https://cdn.discordapp.com/emojis/{emoji_id}.webp?size=96&quality=lossless')  # download directly to get emoji for other servers
+                asset_filename = self.copy_asset_locally(
+                    emoji_id, f"https://cdn.discordapp.com/emojis/{emoji_id}.webp?size=96&quality=lossless"
+                )  # download directly to get emoji for other servers
 
             if asset_filename:
                 result = f'<img src="{asset_filename}">'
@@ -147,7 +152,7 @@ class ChannelExporter:
         return result
 
     def newline_to_break(self, value):
-        return value.replace('\n', '<br>')
+        return value.replace("\n", "<br>")
 
     async def parse_masked_link(self, text_link) -> (str, str):
         """
@@ -155,11 +160,11 @@ class ChannelExporter:
         :param text_link:
         :return: tuple of the (text, link)
         """
-        match: re.Match = re.search(r'\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)', text_link)
+        match: re.Match = re.search(r"\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)", text_link)
         if match:
-            return await self.convert_message_content_to_html(match['text']), match['link']
+            return await self.convert_message_content_to_html(match["text"]), match["link"]
         else:
-            return '', ''
+            return "", ""
 
     async def convert_message_content_to_html(self, content: str) -> str:
         """
@@ -170,15 +175,15 @@ class ChannelExporter:
         markdown_tokenizer = MarkdownTokenizer(content)
         markdown_tokenizer.tokenize()
 
-        html: str = ''
+        html: str = ""
         for token in markdown_tokenizer.tokens:
             match token.token_type:
                 case MarkdownTokenType.HEADER1:
-                    html += f'<h1>{self.markdown_to_html(token.value)}</h1>'
+                    html += f"<h1>{self.markdown_to_html(token.value)}</h1>"
                 case MarkdownTokenType.HEADER2:
-                    html += f'<h2>{self.markdown_to_html(token.value)}</h2>'
+                    html += f"<h2>{self.markdown_to_html(token.value)}</h2>"
                 case MarkdownTokenType.HEADER3:
-                    html += f'<h3>{self.markdown_to_html(token.value)}</h3>'
+                    html += f"<h3>{self.markdown_to_html(token.value)}</h3>"
                 case MarkdownTokenType.AT_USER:
                     html += f'<span class="atText">@{self.at_user_markdown_to_username(token.value)}</span>'
                 case MarkdownTokenType.AT_ROLE:
@@ -198,27 +203,31 @@ class ChannelExporter:
                 case MarkdownTokenType.MASKED_LINK:
                     (text, link) = await self.parse_masked_link(token.value)
                     html += f'<a href="{link}">{text}</a>'
+                case MarkdownTokenType.BLOCKQUOTE:
+                    html += f'<blockquote>{token.value}</blockquote>'
         return html
 
     def get_author_avatar(self, author: discord.User | None) -> str:
-        avatar_url = author.avatar.url if author and author.avatar else 'https://cdn.discordapp.com/embed/avatars/0.png'
+        avatar_url = author.avatar.url if author and author.avatar else "https://cdn.discordapp.com/embed/avatars/0.png"
         return f'<img src="{avatar_url}">'
 
     def author_name_to_html(self, message):
-        bot_html: str = ''
+        bot_html: str = ""
         if message.author.bot:
             bot_html = ' <span class="botTag">Bot</span>'
-        username_style: str = ''
-        if isinstance(message.author, discord.member.Member) and message.author.top_role and message.author.top_role.color.value != 0:
+        username_style: str = ""
+        if (
+            isinstance(message.author, discord.member.Member)
+            and message.author.top_role
+            and message.author.top_role.color.value != 0
+        ):
             username_style = f'style="color: {message.author.top_role.color};"'
-        return \
-            f"""
+        return f"""
              <span class="username" {username_style}>{message.author.display_name}</span>{bot_html}
              """
 
     def default_title_to_html(self, message: discord.Message) -> str:
-        return \
-            f"""
+        return f"""
              <div class="title">
                  {self.author_name_to_html(message)} 
                  <span class="timestamp">{message.created_at.strftime("%Y-%m-%d %H:%M")}</span>
@@ -226,8 +235,7 @@ class ChannelExporter:
              """
 
     def system_title_to_html(self, message: discord.Message) -> str:
-        return \
-            f"""
+        return f"""
              <div class="title">
                <span class="systemMessage">{message.system_content}</span>
                <span class="timestamp">{message.created_at.strftime("%Y-%m-%d %H:%M")}</span>
@@ -245,22 +253,21 @@ class ChannelExporter:
 
     def convert_attachment_to_html(self, attachment: discord.Attachment) -> str:
         local_filename = self.copy_asset_locally(str(attachment.id), attachment.proxy_url, attachment.url)
-        match attachment.filename.split('.')[-1]:
+        match attachment.filename.split(".")[-1]:
             case "png" | "jpg" | "jpeg" | "gif":
                 attachment_html = self.image_attachment_to_html(local_filename)
             case "mp4":
                 attachment_html = self.video_attachment_to_html(local_filename)
             case _:
                 attachment_html = self.download_attachment_to_html(local_filename)
-        return \
-            f"""
+        return f"""
              <div class="attachment">
                 {attachment_html}
              </div>
              """
 
     def convert_attachments_to_html(self, message: discord.Message) -> str:
-        result: str = ''
+        result: str = ""
         for attachment in message.attachments:
             result += self.convert_attachment_to_html(attachment)
         return result
@@ -269,7 +276,7 @@ class ChannelExporter:
         emoji: str | discord.Emoji | discord.PartialEmoji = reaction.emoji
         if type(emoji) is str:
             # if it's an emoji str reference, decode it
-            match = re.search('<:[^:]+:(?P<emoji_id>.+)>', emoji)
+            match = re.search("<:[^:]+:(?P<emoji_id>.+)>", emoji)
             if match:
                 emoji = self.bot.get_emoji(match[0])
         if type(emoji) is discord.Emoji or type(emoji) is discord.PartialEmoji:
@@ -283,35 +290,38 @@ class ChannelExporter:
                 """
 
     def convert_reactions_to_html(self, message: discord.Message) -> str:
-        reactions: str = ''
+        reactions: str = ""
         for reaction in message.reactions:
             reactions += self.reaction_to_html(reaction)
-        return \
-            f"""
+        return f"""
             <div class="reactions">
               {reactions}
             </div>
             """
 
     def get_id_from_url(self, url) -> str:
-        return url.split('/')[-2]
+        return url.split("/")[-2]
 
     async def convert_embed_to_html(self, embed: discord.Embed) -> str:
         result = '<div class="embed">'
-        embed_color_style: str = ''
+        embed_color_style: str = ""
         if embed.colour:
             embed_color_style = f'style="background-color: {embed.colour}"'
         result += f'<div class="embedColorBar" {embed_color_style}></div>'
         result += '<div class="embedContent">'
         if embed.author:
-            result += f'<div class="embedAuthor">' \
-                      f'  <img src="{embed.author.icon_url}">' \
-                      f'  <a href="{embed.author.url}">{embed.author.name}</a>' \
-                      f'</div>'
+            result += (
+                f'<div class="embedAuthor">'
+                f'  <img src="{embed.author.icon_url}">'
+                f'  <a href="{embed.author.url}">{embed.author.name}</a>'
+                f"</div>"
+            )
         if embed.title:
             result += f'  <div class="embedTitle">{await self.convert_message_content_to_html(embed.title)}</div>'
         if embed.description:
-            result += f'  <div class="embedDescription">{await self.convert_message_content_to_html(embed.description)}</div>'
+            result += (
+                f'  <div class="embedDescription">{await self.convert_message_content_to_html(embed.description)}</div>'
+            )
         if embed.fields:
             for field in embed.fields:
                 name_html: str = await self.convert_message_content_to_html(field.name)
@@ -321,44 +331,47 @@ class ChannelExporter:
                 else:
                     result += f'<div class="field">'
 
-                result += f'<span class="fieldName">{name_html}</span> <span class="fieldValue">{value_html}</span></div>'
+                result += (
+                    f'<span class="fieldName">{name_html}</span> <span class="fieldValue">{value_html}</span></div>'
+                )
         if embed.thumbnail.url:
             result += f'  <div class="embedThumbnail"><img src="{embed.thumbnail.url}"></div>'
         if embed.image.url:
-            local_filename = self.copy_asset_locally(self.get_id_from_url(embed.image.url), embed.image.url, embed.image.proxy_url)
+            local_filename = self.copy_asset_locally(
+                self.get_id_from_url(embed.image.url), embed.image.url, embed.image.proxy_url
+            )
             result += f'  <div class="embedImage"><img src="{local_filename}"></div>'
-        result += '</div>'
-        result += '</div>'
+        result += "</div>"
+        result += "</div>"
         return result
 
     async def convert_embeds_to_html(self, message: discord.Message) -> str:
-        result: str = ''
+        result: str = ""
         for embed in message.embeds:
             result += await self.convert_embed_to_html(embed)
         return result
 
     async def default_message_to_inner_html(self, message: discord.Message, coalesce: bool = False) -> str:
-        avatar: str = ''
-        title: str = ''
+        avatar: str = ""
+        title: str = ""
         if not coalesce:
             avatar: str = self.get_author_avatar(message.author)
             title: str = self.default_title_to_html(message)
         html_content: str = await self.convert_message_content_to_html(message.content)
 
-        reactions_content: str = ''
+        reactions_content: str = ""
         if message.reactions and len(message.reactions) > 0:
             reactions_content = self.convert_reactions_to_html(message)
 
-        attachment_content: str = ''
+        attachment_content: str = ""
         if message.attachments and len(message.attachments) > 0:
             attachment_content = self.convert_attachments_to_html(message)
 
-        embeds: str = ''
+        embeds: str = ""
         if message.embeds and len(message.embeds) > 0:
             embeds = await self.convert_embeds_to_html(message)
 
-        return \
-            f"""
+        return f"""
             <div class="gutter">
                 {avatar}
             </div>
@@ -372,8 +385,11 @@ class ChannelExporter:
             """
 
     async def default_message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
-        html: str = \
-            f"""
+        if message.id == 1140127696576323585:
+            print("Message:")
+            print(message.content)
+            print('----------')
+        html: str = f"""
             <a id="{message.id}"></a>
             <div class="messageBlock flex-row {'' if coalesce else 'mt-20'}">
                 {await self.default_message_to_inner_html(message, coalesce)}
@@ -386,8 +402,7 @@ class ChannelExporter:
     def system_message_to_html(self, message: discord.Message) -> str:
         avatar: str = self.get_author_avatar(None)
         title: str = self.system_title_to_html(message)
-        return \
-            f"""
+        return f"""
             <div class="messageBlock flex-row mt-20">
                 <div class="gutter">
                     {avatar}
@@ -400,10 +415,9 @@ class ChannelExporter:
 
     async def thread_created_message_to_html(self, message: discord.Message) -> str:
         if message.id not in self.thread_id_map:
-            return ''
+            return ""
         thread = self.thread_id_map[message.id]
-        return \
-            f"""
+        return f"""
             <div class="messageBlock flex-row">
                 <div class="gutter">
                     <div class="threadIndicator"></div>
@@ -423,8 +437,7 @@ class ChannelExporter:
 
     async def reply_message_to_html(self, message: discord.Message) -> str:
         ref_message = await self.channel.fetch_message(message.reference.message_id)
-        return \
-            f"""
+        return f"""
              <div class="messageBlock flex-col mt-20">
                 <div class="flex flex-row mb4">
                     <div class="gutter">
@@ -485,14 +498,13 @@ class ChannelExporter:
         return True
 
     async def convert_messages_to_html(self) -> str:
-        message_html: str = ''
+        message_html: str = ""
         last_message: discord.Message | None = None
         for message in self.messages:
             coalesce: bool = self.should_coalesce_messages(last_message, message)
             message_html += await self.message_to_html(message, coalesce)
             last_message = message
-        return \
-            f"""
+        return f"""
              <div class="pageHeader">
                  <h2>{self.channel.guild.name} - {self.channel.name}</h2>
              </div>
@@ -509,22 +521,26 @@ class ChannelExporter:
     def zip_contents(self) -> None:
         max_upload_size = self.channel.guild.filesize_limit
         split_count: int = 0
-        zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count}.zip", 'w', compresslevel=ZIP_BZIP2)
-        for file in os.listdir(f'{self.output_dir}'):
-            if file.split('.')[-1] == 'html':
-                zipfile.write(f'{self.output_dir}/{file}', f'{file}')
+        zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count}.zip", "w", compresslevel=ZIP_BZIP2)
+        for file in os.listdir(f"{self.output_dir}"):
+            if file.split(".")[-1] == "html":
+                zipfile.write(f"{self.output_dir}/{file}", f"{file}")
                 if os.path.getsize(f"{self.output_dir}/{self.channel.id}_{split_count}.zip") > max_upload_size:
                     split_count += 1
-                    zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count}.zip", 'w', compresslevel=ZIP_BZIP2)
+                    zipfile = ZipFile(
+                        f"{self.output_dir}/{self.channel.id}_{split_count}.zip", "w", compresslevel=ZIP_BZIP2
+                    )
 
         zipfile.write(f"{self.output_dir}/assets/", "assets/")
-        for file in os.listdir(f'{self.output_dir}/assets/'):
+        for file in os.listdir(f"{self.output_dir}/assets/"):
             zip_size: int = os.path.getsize(f"{self.output_dir}/{self.channel.id}_{split_count}.zip")
-            file_size: int = os.path.getsize(f'{self.output_dir}/assets/{file}')
+            file_size: int = os.path.getsize(f"{self.output_dir}/assets/{file}")
             if zip_size + file_size > max_upload_size:  # assume it won't compress
                 split_count += 1
-                zipfile = ZipFile(f"{self.output_dir}/{self.channel.id}_{split_count:02}.zip", 'w', compresslevel=ZIP_BZIP2)
-            zipfile.write(f'{self.output_dir}/assets/{file}', f'assets/{file}')
+                zipfile = ZipFile(
+                    f"{self.output_dir}/{self.channel.id}_{split_count:02}.zip", "w", compresslevel=ZIP_BZIP2
+                )
+            zipfile.write(f"{self.output_dir}/assets/{file}", f"assets/{file}")
 
     async def send_zips_to_output_channel(self) -> None:
         if self.output_channel_id == -1:
@@ -532,17 +548,20 @@ class ChannelExporter:
 
         channel: discord.TextChannel = self.bot.get_channel(self.output_channel_id)
         if channel:
-            await channel.send("Backup of Channel Completed.  Zip(s) will be posted below.")
+            await channel.send(f"A backup of {channel.name} has been created.")
             try:
-                sorted_files = [f for f in os.listdir(f'{self.output_dir}') if f.split('.')[-1] == 'zip']
+                sorted_files = [f for f in os.listdir(f"{self.output_dir}") if f.split(".")[-1] == "zip"]
                 sorted_files.sort()
                 for idx, file in enumerate(sorted_files):
                     logger.info(f"uploading file {self.output_dir + '/' + file} to channel {channel.name}")
-                    discord_file = discord.File(self.output_dir + '/' + file, filename=f'{self.channel.name} {idx+1} of {len(sorted_files)}.zip')
+                    discord_file = discord.File(
+                        self.output_dir + "/" + file,
+                        filename=f"{self.channel.name} backup {idx+1} of {len(sorted_files)}.zip",
+                    )
                     await channel.send(file=discord_file)
             except Exception as ex:
                 logging.error(f"error uploading to discord: {ex}")
-                await channel.send('An error was encountered uploading files to discord')
+                await channel.send("An error was encountered uploading files to discord")
 
     async def export_threads(self) -> None:
         for thread_id in self.thread_id_map.keys():
@@ -563,13 +582,13 @@ class ChannelExporter:
         We need to get a superset of both archived and current threads to cover everything
         :return: nothing
         """
-        logger.info('building thread cache')
+        logger.info("building thread cache")
         async for thread in self.channel.archived_threads(limit=None):
             self.thread_id_map[thread.id] = thread
 
         for thread in self.channel.threads:
             self.thread_id_map[thread.id] = thread
-        logger.info(f'{len(self.thread_id_map.keys())} threads cached')
+        logger.info(f"{len(self.thread_id_map.keys())} threads cached")
 
     async def export(self) -> None:
         logger.info(f'Starting export of "{self.channel.name}" channel on "{self.channel.guild.name}"')
@@ -581,4 +600,10 @@ class ChannelExporter:
         await self.export_threads()
         self.zip_contents()
         await self.send_zips_to_output_channel()
-        logger.info('Export completed')
+        logger.info("Export completed")
+
+    async def debug(self, message_id):
+        message = await self.channel.fetch_message(message_id)
+        html = await self.message_to_html(message)
+        print('==DEBUG==')
+        print(html)
