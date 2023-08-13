@@ -22,6 +22,16 @@
             element = document.querySelector('#' + element_id);
             element.innerHTML = date.toLocaleTimeString(undefined, { timeStyle: 'short' });
         }
+        const utcToLocalDate = (element_id, year, month, day, hour, minute, second) => {
+            let date = new Date();
+            date.setUTCFullYear(year);
+            date.setUTCMonth(month);
+            date.setUTCDate(day);
+            date.setUTCHours(hour, minute);
+            date.setUTCSeconds(0);
+            element = document.querySelector('#' + element_id);
+            element.innerHTML = date.toLocaleDateString(undefined, { dateStyle: 'long' });
+        }
     </script>
     <style>
         @font-face {
@@ -49,6 +59,8 @@
                 url('./assets/gg sans Bold.woff') format("woff");
         }
         :root {
+            --background-color: #2b2d31;
+            --message-background-color: #313338;
             --base-text-color: rgb(219, 222, 225);
             --gutter-width: 70px;
             --avatar-width: 40px;
@@ -57,6 +69,7 @@
             --secondary-link-color: #c7c7c7;
             --header-color: rgb(242, 243, 245);
             --dark-box-color: #2b2d31;
+            --divider-line-color: #444444;
         }
         .flex {
             display: flex;
@@ -71,7 +84,7 @@
             margin-bottom: 4px;
         }
         body {
-            background-color: #2b2d31;
+            background-color: var(--background-color);
             color: var(--base-text-color);
             font-family: 'gg sans', 'Arial', sans-serif;
             font-size: 1rem;
@@ -79,12 +92,11 @@
         }
         .pageHeader {
             top: 0;
-            background-color: #2e3035;
-            border-bottom: 1px solid #999;
+            background-color: var(--message-background-color);
+            border-bottom: 1px solid #222;
             padding: 8px 70px;
             margin: 0;
             height: fit-content;
-            z-index: 100;
         }
         .pageHeader h2 {
             margin: 4px;
@@ -120,7 +132,7 @@
             color: var(--secondary-text-color);
         }
         .messageContainer {
-            background-color: #313338;
+            background-color: var(--message-background-color);
             position: relative;
             padding: 15px 0 30px 0;
         }
@@ -174,7 +186,6 @@
             min-width: var(--gutter-width);
             max-width: var(--gutter-width);
             justify-content: center;
-            /*align-items: start;*/
             overflow: clip;
             margin: 0 3px 0 0;
         }
@@ -188,7 +199,6 @@
             flex: 1 1 auto;
             display: flex;
             flex-direction: column;
-            gap: 5px;
         }
         .title {
         }
@@ -411,8 +421,8 @@
             position: relative;
             top: 50%;
             left: calc((var(--avatar-width)/2) - 3px);
-            border-left: 2px solid #444444;
-            border-top: 2px solid #444444;
+            border-left: 2px solid var(--divider-line-color);
+            border-top: 2px solid var(--divider-line-color);
             border-top-left-radius: 6px;
             width: calc(var(--gutter-width)/2);
             height: 1em;
@@ -425,6 +435,20 @@
             border-bottom-left-radius: 6px;
             width: calc(var(--gutter-width)/2);
             height: 1em;
+        }
+        .dayDivider {
+            display: flex;
+            border-top: 1px solid var(--divider-line-color);
+            width: calc(100% - 30px);
+            margin: 20px 15px 0 15px;
+            justify-content: center;
+        }
+        .dayDividerText {
+            text-align: center;
+            position: relative;
+            top: -12px;
+            background-color: var(--message-background-color);
+            padding: 4px;
         }
     </style>
 </head>

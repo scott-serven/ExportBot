@@ -205,7 +205,7 @@ class MarkdownTokenizer:
                     if not self.get_header_token():
                         self.append_to_curr_token()
                 case "<":
-                    if self.idx < len(self.markdown):
+                    if self.idx < len(self.markdown) - 1:
                         next_char = self.markdown[self.idx+1]
                         match next_char:
                             case '@':

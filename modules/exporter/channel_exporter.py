@@ -1,4 +1,5 @@
 import datetime
+import time
 import logging
 import os
 import re
@@ -228,7 +229,7 @@ class ChannelExporter:
              <span class="username" {username_style}>{author.display_name}</span>{bot_html}
              """
 
-    def time_to_html(self, id:int, timestamp: datetime.datetime) -> str:
+    def time_to_html(self, id: int, timestamp: datetime.datetime) -> str:
         year: int = timestamp.year
         month: int = timestamp.month
         day: int = timestamp.day
@@ -242,7 +243,7 @@ class ChannelExporter:
              <script>utcToLocalTime('ts_{id}', {year}, {month-1}, {day}, {hour}, {minute}, {seconds});</script>
             """
 
-    def timestamp_to_html(self, id: int, timestamp: datetime.datetime) -> str:
+    def date_to_html(self, id: int, timestamp: datetime.datetime) -> str:
         year: int = timestamp.year
         month: int = timestamp.month
         day: int = timestamp.day
@@ -253,7 +254,28 @@ class ChannelExporter:
              <span class="timestamp" id="ts_{id}">
                  {timestamp.strftime("%Y-%m-%d %H:%M")}
              </span>
+             <script>utcToLocalDate('ts_{id}', {year}, {month-1}, {day}, {hour}, {minute}, {seconds});</script>
+            """
+
+    def timestamp_to_html(self, id: int, timestamp: datetime.datetime) -> str:
+        year: int = timestamp.year
+        month: int = timestamp.month
+        day: int = timestamp.day
+        hour: int = timestamp.hour
+        minute: int = timestamp.minute
+        seconds: int = timestamp.second
+        return f"""
+             <span class="timestamp" id="ts_{id}">
+                 {timestamp.strftime("%Y-%m-%d")}
+             </span>
              <script>utcToLocal('ts_{id}', {year}, {month-1}, {day}, {hour}, {minute}, {seconds});</script>
+            """
+
+    def day_divider_to_html(self, date: datetime.datetime) -> str:
+        return f"""
+            <div class="dayDivider">
+                <div class="dayDividerText">{self.date_to_html(int(time.mktime(date.timetuple())), date)}</div>
+            </div>
             """
 
     def default_title_to_html(self, message: discord.Message) -> str:
@@ -572,6 +594,8 @@ class ChannelExporter:
         last_message: discord.Message | None = None
         for message in self.messages:
             coalesce: bool = self.should_coalesce_messages(last_message, message)
+            if last_message is None or last_message.created_at.day != message.created_at.day:
+                message_html += self.day_divider_to_html(message.created_at)
             message_html += await self.message_to_html(message, coalesce)
             last_message = message
         return f"""
