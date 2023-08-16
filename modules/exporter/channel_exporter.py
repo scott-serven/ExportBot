@@ -90,6 +90,7 @@ class ChannelExporter:
         markdown = re.sub(
             "__(?P<text>[^_]*)__", '<span style="font-decoration:underline">\g<1></span>', markdown, flags=re.MULTILINE
         )
+        markdown = re.sub("~~(?P<text>[^\~]+)~~", "<s>\g<1></s>", markdown, flags=re.MULTILINE)
         markdown = re.sub(r"\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)", '<a href="\g<2>">\g<1></a>', markdown)
         return markdown
 
