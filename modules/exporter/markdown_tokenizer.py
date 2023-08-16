@@ -66,7 +66,6 @@ class MarkdownTokenizer:
     def capture_pattern_token(self, pattern: re.Pattern, token_type: MarkdownTokenType):
         match: re.Match = pattern.search(self.markdown[self.idx::])
         if match:
-            print('token: ', token_type, match[0])
             self.capture_curr_token()
             self.tokens.append(Token(token_type, match[0]))
             self.idx += len(match[0])
@@ -137,7 +136,6 @@ class MarkdownTokenizer:
         if header_match:
             token = None
             value = header_match["value"]
-            print('Header: ', value)
             match header_match["header"]:
                 case "#":
                     token = Token(MarkdownTokenType.HEADER1, value)
