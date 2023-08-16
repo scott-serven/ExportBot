@@ -21,9 +21,7 @@ class ChannelExporter:
     """
     Limitations:
       * Does not do code formatting
-      * Does not handle list markdown
       * Does not handle most of the special discord.MessageTypes
-      * Doesn't have date separator line
     """
 
     def __init__(self, bot: discord.Client, channel: discord.TextChannel, output_dir: str, output_channel_id: int):
@@ -87,8 +85,8 @@ class ChannelExporter:
         return markdown
 
     def markdown_to_html(self, markdown: str) -> str:
-        markdown = re.sub("\*\*(?P<text>[^\*]*)\*\*", "<b>\g<1></b>", markdown, flags=re.MULTILINE)
-        markdown = re.sub("\*(?P<text>[^\*]*)\*", "<i>\g<1></i>", markdown, flags=re.MULTILINE)
+        markdown = re.sub("\*\*(?P<text>[^\*]+)\*\*", "<b>\g<1></b>", markdown, flags=re.MULTILINE)
+        markdown = re.sub("\*(?P<text>[^\*]+)\*", "<i>\g<1></i>", markdown, flags=re.MULTILINE)
         markdown = re.sub(
             "__(?P<text>[^_]*)__", '<span style="font-decoration:underline">\g<1></span>', markdown, flags=re.MULTILINE
         )
@@ -129,7 +127,7 @@ class ChannelExporter:
         else:
             return "unknown channel"
 
-    async def emoji_markdown_to_html(self, markdown) -> str:
+    async def emoji_markdown_to_html(self, markdown: str) -> str:
         """
         Limitation: Can't load emoji from a server that this bot is not a member of
         :param markdown:
@@ -154,6 +152,18 @@ class ChannelExporter:
                 result = markdown
         return result
 
+    def code_block_to_html(self, markdown: str) -> str:
+        match: re.Match = MarkdownTokenizer.CODE_BLOCK_PATTERN.match(markdown)
+        if match:
+            print('code block: ', match['code'])
+            return f"""
+                <div class="code darkBorder">
+                    <code>
+                    <pre>{self.escape_html(match['code'])}</pre>
+                    </code>
+                </div>
+                """
+
     def newline_to_break(self, value):
         return value.replace("\n", "<br>")
 
@@ -168,6 +178,15 @@ class ChannelExporter:
             return await self.message_content_to_html(match["text"]), match["link"]
         else:
             return "", ""
+
+    def unordered_list_item_to_html(self, markdown: str) -> str:
+        match: re.Match = MarkdownTokenizer.UNORDERED_BULLET_PATTERN.match(markdown)
+        if match:
+            return f"""
+                <ul class="unorderedList">
+                    <li class="listItem{1 if len(match['spaces']) == 0 else 2}">{self.markdown_to_html(match['item'])}</li>
+                </ul>
+                """
 
     async def message_content_to_html(self, message_content: str) -> str:
         """
@@ -198,7 +217,7 @@ class ChannelExporter:
                 case MarkdownTokenType.CODE_TEXT:
                     html += f'<span class="codeText">{self.escape_html(token.value)}</span>'
                 case MarkdownTokenType.CODE_BLOCK:
-                    html += f'<div class="code darkBorder"><code><pre>{self.escape_html(token.value)}</pre></code></div>'
+                    html += self.code_block_to_html(token.value)
                 case MarkdownTokenType.TEXT:
                     html += self.newline_to_break(self.markdown_to_html(token.value))
                 case MarkdownTokenType.LINK:
@@ -208,6 +227,8 @@ class ChannelExporter:
                     html += f'<a href="{link}">{text}</a>'
                 case MarkdownTokenType.BLOCKQUOTE:
                     html += f'<blockquote>{token.value}</blockquote>'
+                case MarkdownTokenType.UNORDERED_LIST_ITEM:
+                    html += self.unordered_list_item_to_html(token.value)
         return html
 
     def get_author_avatar(self, author: discord.User | None) -> str:

@@ -16,6 +16,7 @@ class MarkdownTokenType(Enum):
     LINK = "link"
     MASKED_LINK = "masked_link"
     BLOCKQUOTE = "blockquote"
+    UNORDERED_LIST_ITEM = 'unordered_list_item'
 
 
 class Token:
@@ -34,14 +35,11 @@ class MarkdownTokenizer:
     the parsing of other types of elements.
     """
 
-    CODE_BLOCK_SEQUENCE: str = "```"
-    CODE_TEXT_SEQUENCE: str = "`"
-
     AT_USER_PATTERN: re.Pattern = re.compile("^<@\d+>")
     AT_ROLE_PATTERN: re.Pattern = re.compile("^<@&\d+>")
     CHANNEL_LINK_PATTERN: re.Pattern = re.compile("^<#\d+>")
     EMOJI_PATTERN: re.Pattern = re.compile("^<a?:[a-zA-Z0-9_-]+:\d+>")
-    HEADER_PATTERN: re.Pattern = re.compile("^(?P<header>#{1,3}) (?P<value>.+)$", re.MULTILINE)
+    HEADER_PATTERN: re.Pattern = re.compile("^(?P<header>#{1,3}) (?P<value>.+)(\n|$)", re.MULTILINE)
     LINK_PATTERN: re.Pattern = re.compile("^(?P<link>https?://[^\s]+)(\s|$)", re.IGNORECASE)
     ODD_LINK_PATTERN: re.Pattern = re.compile(
         "^<(?P<link>https?://[^>]+)>", re.IGNORECASE
@@ -49,6 +47,9 @@ class MarkdownTokenizer:
     MASKED_LINK_PATTERN: re.Pattern = re.compile(r"\[(?P<text>[^\]]+)\]\((?P<link>[^\)]+)\)")
     MULTILINE_BLOCKQUOTE_PATTERN: re.Pattern = re.compile(r'(^|\n)>>>\s(?P<quote>.+)$', re.DOTALL)
     SINGLE_BLOCKQUOTE_PATTERN: re.Pattern = re.compile(r'^> (?P<quote>.*)$', re.MULTILINE)
+    CODE_BLOCK_PATTERN: re.Pattern = re.compile('^```\n?(?P<code>.+)```', re.DOTALL)
+    CODE_TEXT_PATTERN: re.Pattern = re.compile('^`.+`', re.DOTALL)
+    UNORDERED_BULLET_PATTERN: re.Pattern = re.compile('^(?P<spaces>(\s*))(\*|-) (?P<item>(.+))(\n|$)', re.MULTILINE)
 
     def __init__(self, markdown):
         self.markdown: str = markdown
@@ -62,55 +63,32 @@ class MarkdownTokenizer:
             self.tokens.append(Token(MarkdownTokenType.TEXT, self.curr_token))
             self.curr_token = ""
 
+    def capture_pattern_token(self, pattern: re.Pattern, token_type: MarkdownTokenType):
+        match: re.Match = pattern.search(self.markdown[self.idx::])
+        if match:
+            print('token: ', token_type, match[0])
+            self.capture_curr_token()
+            self.tokens.append(Token(token_type, match[0]))
+            self.idx += len(match[0])
+            self.token_found = True
+
     def get_code_block_token(self) -> None:
-        self.capture_curr_token()
-        self.idx += len(self.CODE_BLOCK_SEQUENCE)  # skip over escape sequence
-        index: int = self.markdown[self.idx : :].find(self.CODE_BLOCK_SEQUENCE)
-        token = Token(MarkdownTokenType.CODE_BLOCK, self.markdown[self.idx: self.idx + index])
-        self.tokens.append(token)
-        self.idx += index + len(self.CODE_BLOCK_SEQUENCE)
-        self.token_found = True
+        self.capture_pattern_token(self.CODE_BLOCK_PATTERN, MarkdownTokenType.CODE_BLOCK)
 
     def get_code_text_token(self) -> None:
-        self.capture_curr_token()
-        self.idx += len(self.CODE_TEXT_SEQUENCE)  # skip over escape sequence
-        index: int = self.markdown[self.idx : :].find(self.CODE_TEXT_SEQUENCE)
-        token = Token(MarkdownTokenType.CODE_TEXT, self.markdown[self.idx: self.idx + index])
-        self.tokens.append(token)
-        self.idx += index + len(self.CODE_TEXT_SEQUENCE)
-        self.token_found = True
+        self.capture_pattern_token(self.CODE_TEXT_PATTERN, MarkdownTokenType.CODE_TEXT)
 
     def get_at_user_token(self) -> None:
-        match: re.Match = self.AT_USER_PATTERN.search(self.markdown[self.idx::])
-        if match:
-            self.capture_curr_token()
-            self.tokens.append(Token(MarkdownTokenType.AT_USER, match[0]))
-            self.idx += len(match[0])
-            self.token_found = True
+        self.capture_pattern_token(self.AT_USER_PATTERN, MarkdownTokenType.AT_USER)
 
     def get_at_role_token(self) -> None:
-        match: re.Match = self.AT_ROLE_PATTERN.search(self.markdown[self.idx::])
-        if match:
-            self.capture_curr_token()
-            self.tokens.append(Token(MarkdownTokenType.AT_ROLE, match[0]))
-            self.idx += len(match[0])
-            self.token_found = True
+        self.capture_pattern_token(self.AT_ROLE_PATTERN, MarkdownTokenType.AT_ROLE)
 
     def get_channel_link_token(self) -> None:
-        match: re.Match = self.CHANNEL_LINK_PATTERN.search(self.markdown[self.idx::])
-        if match:
-            self.capture_curr_token()
-            self.tokens.append(Token(MarkdownTokenType.CHANNEL_LINK, match[0]))
-            self.idx += len(match[0])
-            self.token_found = True
+        self.capture_pattern_token(self.CHANNEL_LINK_PATTERN, MarkdownTokenType.CHANNEL_LINK)
 
     def get_emoji_token(self) -> None:
-        match: re.Match = self.EMOJI_PATTERN.search(self.markdown[self.idx::])
-        if match:
-            self.capture_curr_token()
-            self.tokens.append(Token(MarkdownTokenType.EMOJI, match[0]))
-            self.idx += len(match[0])
-            self.token_found = True
+        self.capture_pattern_token(self.EMOJI_PATTERN, MarkdownTokenType.EMOJI)
 
     def get_link_token(self) -> None:
         match: re.Match = self.LINK_PATTERN.search(self.markdown[self.idx::])
@@ -129,12 +107,7 @@ class MarkdownTokenizer:
             self.token_found = True
 
     def get_masked_link_token(self) -> None:
-        match: re.Match = self.MASKED_LINK_PATTERN.search(self.markdown[self.idx::])
-        if match:
-            self.capture_curr_token()
-            self.tokens.append(Token(MarkdownTokenType.MASKED_LINK, match[0]))
-            self.idx += len(match[0])
-            self.token_found = True
+        self.capture_pattern_token(self.MASKED_LINK_PATTERN, MarkdownTokenType.MASKED_LINK)
 
     def get_single_blockquote_token(self) -> None:
         match: re.Match = self.SINGLE_BLOCKQUOTE_PATTERN.search(self.markdown[self.idx::])
@@ -147,12 +120,10 @@ class MarkdownTokenizer:
             self.token_found = True
 
     def get_multiline_blockquote_token(self) -> None:
-        match: re.Match = self.MULTILINE_BLOCKQUOTE_PATTERN.search(self.markdown[self.idx::])
-        if match:
-            self.capture_curr_token()
-            self.tokens.append(Token(MarkdownTokenType.BLOCKQUOTE, match[0]))
-            self.idx += len(match[0])
-            self.token_found = True
+        self.capture_pattern_token(self.MULTILINE_BLOCKQUOTE_PATTERN, MarkdownTokenType.BLOCKQUOTE)
+
+    def get_unordered_list_token(self) -> None:
+        self.capture_pattern_token(self.UNORDERED_BULLET_PATTERN, MarkdownTokenType.UNORDERED_LIST_ITEM)
 
     def get_header_token(self) -> None:
         """
@@ -162,10 +133,11 @@ class MarkdownTokenizer:
         if self.idx > 0 and self.markdown[self.idx - 1] != "\n":
             return
 
-        header_match = self.HEADER_PATTERN.search(self.markdown[self.idx : :])
+        header_match = self.HEADER_PATTERN.search(self.markdown[self.idx::])
         if header_match:
             token = None
             value = header_match["value"]
+            print('Header: ', value)
             match header_match["header"]:
                 case "#":
                     token = Token(MarkdownTokenType.HEADER1, value)
@@ -194,10 +166,15 @@ class MarkdownTokenizer:
         self.curr_token = ""
         while self.idx < len(self.markdown):
             char = self.markdown[self.idx]
-            self.token_found: bool = False
+            last_char = ''
+            if self.idx > 0:
+                last_char = self.markdown[self.idx-1]
+            self.token_found = False
+            if last_char == '\n':
+                self.get_unordered_list_token()
             match char:
-                case self.CODE_TEXT_SEQUENCE:
-                    if self.markdown[self.idx : self.idx + 3] == self.CODE_BLOCK_SEQUENCE:
+                case '`':
+                    if self.idx < len(self.markdown) - 2 and self.markdown[self.idx:self.idx+3] == '```':
                         self.get_code_block_token()
                     else:
                         self.get_code_text_token()
