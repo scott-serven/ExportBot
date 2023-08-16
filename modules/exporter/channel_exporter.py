@@ -310,7 +310,7 @@ class ChannelExporter:
     def thread_link_to_html(self, thread: discord.Thread) -> str:
         return f"""
             <span class="threadLink">
-                <a class="subtleLink" href="">{thread.name}</a>
+                <a class="subtleLink" href="./{self.get_thread_document_filename(thread.id)}">{thread.name}</a>
             </span>
             """
 
