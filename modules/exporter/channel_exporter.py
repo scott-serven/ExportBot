@@ -156,7 +156,6 @@ class ChannelExporter:
     def code_block_to_html(self, markdown: str) -> str:
         match: re.Match = MarkdownTokenizer.CODE_BLOCK_PATTERN.match(markdown)
         if match:
-            print('code block: ', match['code'])
             return f"""
                 <div class="code darkBorder">
                     <code>

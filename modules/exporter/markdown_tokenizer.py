@@ -48,7 +48,7 @@ class MarkdownTokenizer:
     MULTILINE_BLOCKQUOTE_PATTERN: re.Pattern = re.compile(r'(^|\n)>>>\s(?P<quote>.+)$', re.DOTALL)
     SINGLE_BLOCKQUOTE_PATTERN: re.Pattern = re.compile(r'^> (?P<quote>.*)$', re.MULTILINE)
     CODE_BLOCK_PATTERN: re.Pattern = re.compile('^```\n?(?P<code>.+)```', re.DOTALL)
-    CODE_TEXT_PATTERN: re.Pattern = re.compile('^`.+`', re.DOTALL)
+    CODE_TEXT_PATTERN: re.Pattern = re.compile('^`[^`]+`', re.DOTALL)
     UNORDERED_BULLET_PATTERN: re.Pattern = re.compile('^(?P<spaces>(\s*))(\*|-) (?P<item>(.+))(\n|$)', re.MULTILINE)
 
     def __init__(self, markdown):
