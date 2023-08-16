@@ -478,6 +478,7 @@ class ChannelExporter:
             embeds = await self.embeds_to_html(message)
 
         return f"""
+            <a id="{message.id}"></a>
             <div class="gutter">
                 {avatar}
             </div>
@@ -492,7 +493,6 @@ class ChannelExporter:
 
     async def default_message_to_html(self, message: discord.Message, coalesce: bool = False) -> str:
         html: str = f"""
-            <a id="{message.id}"></a>
             <div class="messageBlock flex-row {'' if coalesce else 'mt20'}">
                 {await self.default_message_to_inner_html(message, coalesce)}
             </div>
